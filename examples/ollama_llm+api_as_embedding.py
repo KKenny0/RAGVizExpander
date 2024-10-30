@@ -71,5 +71,5 @@ embedding_func = ApiEmbeddingFunction(os.getenv("EMBEDDING_MODEL_API_BASE"))
 
 client = RAGVizChain(embedding_model=embedding_func,
                      llm=ChatOllama(model_name=os.getenv("OLLAMA_MODEL_NAME")))
-client.load_pdf("进出口银行业务介绍培训手册.pdf", verbose=True)
-client.visualize_query("贸易合同中应注明在出口买方信贷项下支付的比例，一般为多少？")
+client.load_pdf("Electronic Banking and Accessibility-5265.pdf", verbose=True)
+client.visualize_query("What does electronic banking involve according to Asare and Sakoe [12], such as internet banking, mobile banking, agency banking, and automatic teller machines?")

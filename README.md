@@ -17,7 +17,7 @@ Below are the components you can use:
 # Features
 - [x] Custom LLM & Embedding model
 - [ ] Custom chunking strategy
-- [ ] Support for parsing multiple types of files
+- [x] Support for parsing multiple types of files
 
 # Acknowledgments 💙
 

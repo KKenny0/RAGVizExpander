@@ -4,18 +4,17 @@ rag.py
 This module provides functionalities for building and querying a vector database using ChromaDB.
 It handles operations like loading PDFs, chunking text, embedding, and retrieving documents based on queries.
 """
+from pathlib import Path
 
-import os
 import uuid
 from typing import List, Any
 import chromadb
 import numpy as np
-from PyPDF2 import PdfReader
 from langchain.text_splitter import (
     RecursiveCharacterTextSplitter,
-    SentenceTransformersTokenTextSplitter,
     TokenTextSplitter
 )
+from .loaders import extractors
 
 
 def build_vector_database(file: Any, chunk_size: int, chunk_overlap: int, embedding_model: Any) -> chromadb.Collection:
@@ -30,9 +29,9 @@ def build_vector_database(file: Any, chunk_size: int, chunk_overlap: int, embedd
     Returns:
         A Chroma collection object containing the embedded chunks.
     """
-    pdf_texts = _load_pdf(file)
+    texts = _load_data(file)
     # TODO: custom method support
-    character_split_texts = _split_text_into_chunks(pdf_texts, chunk_size, chunk_overlap)
+    character_split_texts = _split_text_into_chunks(texts, chunk_size, chunk_overlap)
     token_split_texts = _split_chunks_into_tokens(character_split_texts)
     chroma_collection = _create_and_populate_chroma_collection(token_split_texts, embedding_model)
     return chroma_collection
@@ -143,16 +142,19 @@ def get_docs(chroma_collection: chromadb.Collection) -> List[str]:
     return documents
 
 
-def _load_pdf(file: Any) -> List[str]:
+def _load_data(file: str | Path) -> List[str]:
     """
-    Loads and extracts text from a PDF file.
+    Loads and extracts text from a file.
     
     Args:
-        file: The PDF file to load.
+        file: The file to load.
     
     Returns:
         A list of strings, each representing the text of a page.
     """
-    pdf = PdfReader(file)
-    pdf_texts = [p.extract_text().strip() for p in pdf.pages if p.extract_text()]
-    return pdf_texts
+    ext = Path(file).suffix.lower()
+    reader = extractors.get(ext)
+
+    docs = reader.load_data(file)
+    texts = [p.strip() for p in docs if p]
+    return texts
