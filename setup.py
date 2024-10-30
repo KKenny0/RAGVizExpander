@@ -1,14 +1,14 @@
 from setuptools import setup, find_packages
 
 setup(
-    name='ragxplorer',
+    name='ragvizexpander',
     version='0.1.10',
-    author='Gabriel Chua',
-    author_email='cyzgab@gmail.com',
+    author='Kenny Wu',
+    author_email='jdlow@live.cn',
     description='A open-source tool to to visualise your RAG documents 🔮.',
     long_description=open('README.md').read(),
     long_description_content_type='text/markdown',
-    url='https://github.com/gabrielchua/ragxplorer',
+    url='https://github.com/KKenny0/RAGVizExpander.git',
     packages=find_packages(),
     install_requires=[
         'numpy',

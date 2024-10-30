@@ -16,7 +16,8 @@ from .constants import VISUALISATION_SETTINGS, PLOT_SIZE
 
 os.environ['TOKENIZERS_PARALLELISM'] = 'false'
 
-def set_up_umap(embeddings: np.ndarray, umap_params:dict = None) -> umap.UMAP:
+
+def set_up_umap(embeddings: np.ndarray, umap_params: dict = None) -> umap.UMAP:
     """
     Sets up and fits a UMAP transformer to the given embeddings.
 
@@ -31,6 +32,7 @@ def set_up_umap(embeddings: np.ndarray, umap_params:dict = None) -> umap.UMAP:
     else:
         umap_transform = umap.UMAP(**umap_params).fit(embeddings)
     return umap_transform
+
 
 def get_projections(embedding: np.ndarray, umap_transform: umap.UMAP) -> Tuple[np.ndarray, np.ndarray]:
     """
@@ -48,6 +50,7 @@ def get_projections(embedding: np.ndarray, umap_transform: umap.UMAP) -> Tuple[n
     y = projections[:, 1]
     return x, y
 
+
 def _project_embeddings(embeddings: np.ndarray, umap_transform: umap.UMAP) -> np.ndarray:
     """
     Helper function to project embeddings using a UMAP transformer.
@@ -61,10 +64,14 @@ def _project_embeddings(embeddings: np.ndarray, umap_transform: umap.UMAP) -> np
     """
     umap_embeddings = np.empty((len(embeddings), 2))
     for i, embedding in tqdm(enumerate(embeddings), total=len(embeddings)):
+        if len(embeddings) == 1:
+            embedding = embedding[0]
         umap_embeddings[i] = umap_transform.transform([embedding])
     return umap_embeddings
 
-def prepare_projections_df(document_ids: List[str], document_projections: Tuple[np.ndarray, np.ndarray], document_text: List[str]) -> pd.DataFrame:
+
+def prepare_projections_df(document_ids: List[str], document_projections: Tuple[np.ndarray, np.ndarray],
+                           document_text: List[str]) -> pd.DataFrame:
     """
     Prepares a DataFrame for visualization from document IDs, projections, and texts.
 
@@ -79,13 +86,14 @@ def prepare_projections_df(document_ids: List[str], document_projections: Tuple[
     df = pd.DataFrame({"id": document_ids,
                        "x": document_projections[0],
                        "y": document_projections[1]})
-    
+
     df['document'] = document_text
     df['document_cleaned'] = df.document.str.wrap(80).apply(lambda x: x.replace('\n', '<br>'))
     df['size'] = PLOT_SIZE
     df['category'] = "Chunks"
-    
+
     return df
+
 
 def plot_embeddings(df: pd.DataFrame) -> go.Figure:
     """
@@ -128,5 +136,5 @@ def plot_embeddings(df: pd.DataFrame) -> go.Figure:
             orientation='h'
         )
     )
-                
+
     return fig

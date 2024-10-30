@@ -13,10 +13,10 @@ import numpy as np
 from PyPDF2 import PdfReader
 from langchain.text_splitter import (
     RecursiveCharacterTextSplitter,
-    SentenceTransformersTokenTextSplitter
+    SentenceTransformersTokenTextSplitter,
+    TokenTextSplitter
 )
 
-OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 
 def build_vector_database(file: Any, chunk_size: int, chunk_overlap: int, embedding_model: Any) -> chromadb.Collection:
     """
@@ -31,10 +31,12 @@ def build_vector_database(file: Any, chunk_size: int, chunk_overlap: int, embedd
         A Chroma collection object containing the embedded chunks.
     """
     pdf_texts = _load_pdf(file)
+    # TODO: custom method support
     character_split_texts = _split_text_into_chunks(pdf_texts, chunk_size, chunk_overlap)
     token_split_texts = _split_chunks_into_tokens(character_split_texts)
     chroma_collection = _create_and_populate_chroma_collection(token_split_texts, embedding_model)
     return chroma_collection
+
 
 def _split_text_into_chunks(pdf_texts: List[str], chunk_size: int, chunk_overlap: int) -> List[str]:
     """
@@ -55,6 +57,7 @@ def _split_text_into_chunks(pdf_texts: List[str], chunk_size: int, chunk_overlap
     )
     return character_splitter.split_text('\n\n'.join(pdf_texts))
 
+
 def _split_chunks_into_tokens(character_split_texts: List[str]) -> List[str]:
     """
     Splits text chunks into smaller chunks based on token count.
@@ -65,8 +68,17 @@ def _split_chunks_into_tokens(character_split_texts: List[str]) -> List[str]:
     Returns:
         A list of text chunks split by token count.
     """
-    token_splitter = SentenceTransformersTokenTextSplitter(chunk_overlap=0, tokens_per_chunk=256)
+    # token_splitter = SentenceTransformersTokenTextSplitter(
+    #     model_name="sentence-transformers/distiluse-base-multilingual-cased-v2",
+    #     chunk_overlap=0,
+    #     tokens_per_chunk=256
+    # )
+    token_splitter = TokenTextSplitter(
+        chunk_overlap=0,
+        chunk_size=256
+    )
     return [text for chunk in character_split_texts for text in token_splitter.split_text(chunk)]
+
 
 def _create_and_populate_chroma_collection(token_split_texts: List[str], embedding_model) -> chromadb.Collection:
     """
@@ -85,6 +97,7 @@ def _create_and_populate_chroma_collection(token_split_texts: List[str], embeddi
     chroma_collection.add(ids=ids, documents=token_split_texts)
     return chroma_collection
 
+
 def query_chroma(chroma_collection: chromadb.Collection, query: str, top_k: int) -> List[str]:
     """
     Queries the Chroma collection for the top_k most relevant chunks to the input query.
@@ -101,6 +114,7 @@ def query_chroma(chroma_collection: chromadb.Collection, query: str, top_k: int)
     retrieved_id = results['ids'][0]
     return retrieved_id
 
+
 def get_doc_embeddings(chroma_collection: chromadb.Collection) -> np.ndarray:
     """
     Retrieves the document embeddings from the Chroma collection.
@@ -114,6 +128,7 @@ def get_doc_embeddings(chroma_collection: chromadb.Collection) -> np.ndarray:
     embeddings = chroma_collection.get(include=['embeddings'])['embeddings']
     return embeddings
 
+
 def get_docs(chroma_collection: chromadb.Collection) -> List[str]:
     """
     Retrieves the documents from the Chroma collection.
@@ -126,6 +141,7 @@ def get_docs(chroma_collection: chromadb.Collection) -> List[str]:
     """
     documents = chroma_collection.get(include=['documents'])['documents']
     return documents
+
 
 def _load_pdf(file: Any) -> List[str]:
     """

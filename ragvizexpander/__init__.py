@@ -4,6 +4,6 @@ __init__.py
 Initializes the ragxplorer package and exposes the main classes and functions.
 """
 
-from .ragxplorer import RAGxplorer
+from .ragvizchain import RAGVizChain
 
-__all__ = ['RAGxplorer']
+__all__ = ['RAGVizChain']

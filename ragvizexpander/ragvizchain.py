@@ -4,19 +4,17 @@ Ragxplorer.py
 import os
 from typing import (
     Optional,
-    Any
-    )
+    Any,
+    Callable
+)
+from dotenv import load_dotenv
 
 from pydantic import BaseModel, Field
 import pandas as pd
 import umap
 
 from chromadb import Collection
-from chromadb.utils.embedding_functions import (
-    SentenceTransformerEmbeddingFunction,
-    OpenAIEmbeddingFunction,
-    HuggingFaceEmbeddingFunction
-    )
+from chromadb.utils.embedding_functions import OpenAIEmbeddingFunction
 
 import plotly.graph_objs as go
 
@@ -25,21 +23,23 @@ from .rag import (
     get_doc_embeddings,
     get_docs,
     query_chroma
-    )
+)
 
 from .projections import (
     set_up_umap,
     get_projections,
     prepare_projections_df,
     plot_embeddings
-    )
+)
 
 from .query_expansion import (
     generate_hypothetical_ans,
     generate_sub_qn
-    )
+)
 
 from .constants import OPENAI_EMBEDDING_MODELS
+
+load_dotenv()
 
 
 class _Documents(BaseModel):
@@ -48,23 +48,28 @@ class _Documents(BaseModel):
     embeddings: Optional[Any] = None
     projections: Optional[Any] = None
 
+
 class _Query(BaseModel):
     original_query: Optional[Any] = None
     original_query_projection: Optional[Any] = None
     actual_search_queries: Optional[Any] = None
     retrieved_docs: Optional[Any] = None
 
+
 class _VizData(BaseModel):
     base_df: Optional[Any] = None
     query_df: Optional[Any] = None
     visualisation_df: Optional[Any] = None
 
-class RAGxplorer(BaseModel):
+
+class RAGVizChain(BaseModel):
     """
-    RAGxplorer class for managing the RAG exploration process.
+    RAGVizChain class for managing the RAG exploration process.
     """
-    embedding_model: Optional[str] = Field(default="all-MiniLM-L6-v2")
+    embedding_model: Optional[Callable] = None
+    llm: Optional[Callable] = None
     _chosen_embedding_model: Optional[Any] = None
+    _chosen_llm: Optional[Any] = None
     _vectordb: Optional[Any] = None
     _documents: _Documents = _Documents()
     _projector: Optional[Any] = None
@@ -74,34 +79,37 @@ class RAGxplorer(BaseModel):
     def __init__(self, **data):
         super().__init__(**data)
         self._set_embedding_model()
+        self._set_llm()
 
     def _set_embedding_model(self):
         """ Sets the embedding model """
-        if self.embedding_model == 'all-MiniLM-L6-v2':
-            self._chosen_embedding_model = SentenceTransformerEmbeddingFunction()
-
-        elif self.embedding_model in OPENAI_EMBEDDING_MODELS:
+        if self.embedding_model is None:
             if "OPENAI_API_KEY" not in os.environ:
                 raise OSError("OPENAI_API_KEY is not set")
-            self._chosen_embedding_model = OpenAIEmbeddingFunction(api_key = os.getenv("OPENAI_API_KEY"), 
-                                                                   model_name = self.embedding_model)
+            self._chosen_embedding_model = OpenAIEmbeddingFunction(api_key=os.getenv("OPENAI_API_KEY"),
+                                                                   model_name=os.getenv("model_name"))
         else:
-            try:
-                if "HF_API_KEY" not in os.environ:
-                    raise OSError("HF_API_KEY is not set")
-                self._chosen_embedding_model = HuggingFaceEmbeddingFunction(api_key = os.getenv("HF_API_KEY"),
-                                                                            model_name = self.embedding_model)
-            except Exception as exc:
-                raise ValueError("Invalid embedding model. Please use all-MiniLM-L6-v2, or a valid OpenAI or HuggingFace embedding model.") from exc
+            self._chosen_embedding_model = self.embedding_model
 
-    def load_pdf(self, document_path: str, chunk_size: int = 1000, chunk_overlap: int = 0, verbose: bool = False, umap_params: dict = None):
+    def _set_llm(self):
+        """ Sets the LLM model """
+        self._chosen_llm = self.llm
+
+    def load_pdf(self,
+                 document_path: str,
+                 chunk_size: int = 1000,
+                 chunk_overlap: int = 0,
+                 verbose: bool = False,
+                 umap_params: dict = None):
         """
         Load data from a PDF file and prepare it for exploration.
         
         Args:
-            document: Path to the PDF document to load.
+            document_path: Path to the PDF document to load.
             chunk_size: Size of the chunks to split the document into.
             chunk_overlap: Number of tokens to overlap between chunks.
+            verbose:
+            umap_params:
         """
         if verbose:
             print(" ~ Building the vector database...")
@@ -117,62 +125,64 @@ class RAGxplorer(BaseModel):
         self._documents.projections = get_projections(embedding=self._documents.embeddings,
                                                       umap_transform=self._projector)
         self._VizData.base_df = prepare_projections_df(document_ids=self._documents.ids,
-                                                                document_projections=self._documents.projections,
-                                                                document_text=self._documents.text)
+                                                       document_projections=self._documents.projections,
+                                                       document_text=self._documents.text)
         if verbose:
             print("Completed reducing dimensionality of embeddings ✓")
 
-    def visualize_query(self, query: str, retrieval_method: str="naive", top_k:int=5, query_shape_size:int=5, import_projection_data:pd.DataFrame = None) -> go.Figure:
+    def visualize_query(self, query: str, retrieval_method: str = "naive", top_k: int = 5, query_shape_size: int = 5,
+                        import_projection_data: pd.DataFrame = None) -> go.Figure:
         if import_projection_data is not None:
             self._VizData.base_df = import_projection_data
         else:
             if self._vectordb is None or self._VizData.base_df is None:
                 raise RuntimeError("Please load the pdf first.")
-        
+
         if retrieval_method not in ["naive", "HyDE", "multi_qns"]:
             raise ValueError("Invalid retrieval method. Please use naive, HyDE, or multi_qns.")
 
         self._query.original_query = query
 
-        if (self.embedding_model == "all-MiniLM-L6-v2") or (self.embedding_model in OPENAI_EMBEDDING_MODELS):
-            # Brackets around the query required as per latest update to openai client (https://platform.openai.com/docs/guides/embeddings/use-cases). 
-            # It doesn't look like chromadb updated to reflect this.
-            self._query.original_query_projection = get_projections(embedding=self._chosen_embedding_model([self._query.original_query]),
-                                                                    umap_transform=self._projector)
-        else:
-            self._query.original_query_projection = get_projections(embedding=[self._chosen_embedding_model(self._query.original_query)],
-                                                                    umap_transform=self._projector)
+        self._query.original_query_projection = get_projections(
+            embedding=[self._chosen_embedding_model(self._query.original_query)],
+            umap_transform=self._projector)
 
         self._VizData.query_df = pd.DataFrame({"x": [self._query.original_query_projection[0][0]],
-                                      "y": [self._query.original_query_projection[1][0]],
-                                      "document_cleaned": query,
-                                      "category": "Original Query",
-                                      "size": query_shape_size})
+                                               "y": [self._query.original_query_projection[1][0]],
+                                               "document_cleaned": query,
+                                               "category": "Original Query",
+                                               "size": query_shape_size})
 
         if retrieval_method == "naive":
             self._query.actual_search_queries = self._query.original_query
 
         elif retrieval_method == "HyDE":
-            if "OPENAI_API_KEY" not in os.environ:
-                raise OSError("OPENAI_API_KEY is not set")
-            self._query.actual_search_queries = generate_hypothetical_ans(query=self._query.original_query)
+            self._query.actual_search_queries = generate_hypothetical_ans(query=self._query.original_query,
+                                                                          client=self._chosen_llm)
 
         elif retrieval_method == "multi_qns":
-            if "OPENAI_API_KEY" not in os.environ:
-                raise OSError("OPENAI_API_KEY is not set")
-            self._query.actual_search_queries = generate_sub_qn(query=self._query.original_query)
+            self._query.actual_search_queries = generate_sub_qn(query=self._query.original_query,
+                                                                client=self._chosen_llm)
 
         self._query.retrieved_docs = query_chroma(chroma_collection=self._vectordb,
                                                   query=self._query.actual_search_queries,
                                                   top_k=top_k)
 
-        self._VizData.base_df.loc[self._VizData.base_df['id'].isin(self._query.retrieved_docs), "category"] = "Retrieved"
-        
-        self._VizData.visualisation_df = pd.concat([self._VizData.base_df, self._VizData.query_df], axis = 0)
+        self._VizData.base_df.loc[
+            self._VizData.base_df['id'].isin(self._query.retrieved_docs), "category"] = "Retrieved"
 
-        return plot_embeddings(self._VizData.visualisation_df)
+        self._VizData.visualisation_df = pd.concat([self._VizData.base_df, self._VizData.query_df], axis=0)
 
-    def visualise_query(self, query: str, retrieval_method: str="naive", top_k:int=5, query_shape_size:int=5, import_projection_data:pd.DataFrame = None) -> go.Figure:
+        fig = plot_embeddings(self._VizData.visualisation_df)
+        fig.show()
+        return fig
+
+    def visualise_query(self,
+                        query: str,
+                        retrieval_method: str = "naive",
+                        top_k: int = 5,
+                        query_shape_size: int = 5,
+                        import_projection_data: pd.DataFrame = None) -> go.Figure:
         """
         Visualize the query results in a 2D projection using Plotly.
 
@@ -188,15 +198,20 @@ class RAGxplorer(BaseModel):
         Raises:
             RuntimeError: If the document has not been loaded before visualization.
         """
-        return self.visualize_query(query=query, retrieval_method=retrieval_method, top_k=top_k, query_shape_size=query_shape_size, import_projection_data = None)
+        return self.visualize_query(query=query,
+                                    retrieval_method=retrieval_method,
+                                    top_k=top_k,
+                                    query_shape_size=query_shape_size,
+                                    import_projection_data=None)
 
     def export_chroma(self) -> Collection:
         """
         Export the ChromaDB collection.
         """
         return self._vectordb
-    
-    def load_chroma(self, chroma_collection: Collection, initialize_projector: bool = False, recompute_projections: bool = False, umap_params: dict = None,verbose:bool=True):
+
+    def load_chroma(self, chroma_collection: Collection, initialize_projector: bool = False,
+                    recompute_projections: bool = False, umap_params: dict = None, verbose: bool = True):
         """
         Load ChromaDB collection.
         """
@@ -213,17 +228,17 @@ class RAGxplorer(BaseModel):
                 print("Recomputing projections")
             self._projector = set_up_umap(embeddings=self._documents.embeddings, umap_params=umap_params)
             self._documents.projections = get_projections(embedding=self._documents.embeddings,
-                                                        umap_transform=self._projector)
+                                                          umap_transform=self._projector)
             self._VizData.base_df = prepare_projections_df(document_ids=self._documents.ids,
-                                                                    document_projections=self._documents.projections,
-                                                                    document_text=self._documents.text)
-        
+                                                           document_projections=self._documents.projections,
+                                                           document_text=self._documents.text)
+
     def export_projector(self) -> umap.UMAP:
         """
         Export the UMAP projector.
         """
         return self._projector
-    
+
     def load_projector(self, umap_transform: umap.UMAP, recompute_projections: bool = False):
         """
         Load UMAP projector.
@@ -235,6 +250,7 @@ class RAGxplorer(BaseModel):
             self._VizData.base_df = prepare_projections_df(document_ids=self._documents.ids,
                                                            document_projections=self._documents.projections,
                                                            document_text=self._documents.text)
+
     def run_projector(self):
         """
         Run UMAP projector.
@@ -242,5 +258,5 @@ class RAGxplorer(BaseModel):
         self._documents.projections = get_projections(embedding=self._documents.embeddings,
                                                       umap_transform=self._projector)
         self._VizData.base_df = prepare_projections_df(document_ids=self._documents.ids,
-                                                               document_projections=self._documents.projections,
-                                                               document_text=self._documents.text)
+                                                       document_projections=self._documents.projections,
+                                                       document_text=self._documents.text)
