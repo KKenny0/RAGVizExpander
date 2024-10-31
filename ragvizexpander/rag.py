@@ -12,71 +12,41 @@ import chromadb
 import numpy as np
 from langchain.text_splitter import (
     RecursiveCharacterTextSplitter,
-    TokenTextSplitter
+    TokenTextSplitter,
+
 )
 from .loaders import extractors
 
 
-def build_vector_database(file: Any, chunk_size: int, chunk_overlap: int, embedding_model: Any) -> chromadb.Collection:
+def build_vector_database(file: Any, split_func: Any, embedding_model: Any) -> chromadb.Collection:
     """
     Builds a vector database from a PDF file by splitting the text into chunks and embedding them.
     
     Args:
-        file: The PDF file to process.
-        chunk_size: The number of tokens in one chunk.
-        chunk_overlap: The number of tokens shared between consecutive chunks.
+        file: The file to process.
+        split_func:
+        embedding_model:
     
     Returns:
         A Chroma collection object containing the embedded chunks.
     """
     texts = _load_data(file)
-    # TODO: custom method support
-    character_split_texts = _split_text_into_chunks(texts, chunk_size, chunk_overlap)
-    token_split_texts = _split_chunks_into_tokens(character_split_texts)
-    chroma_collection = _create_and_populate_chroma_collection(token_split_texts, embedding_model)
+    split_texts = _split_text_into_chunks(texts, split_func)
+    chroma_collection = _create_and_populate_chroma_collection(split_texts, embedding_model)
     return chroma_collection
 
 
-def _split_text_into_chunks(pdf_texts: List[str], chunk_size: int, chunk_overlap: int) -> List[str]:
+def _split_text_into_chunks(texts: List[str], split_func: Any) -> List[str]:
     """
-    Splits the text from a PDF into chunks based on character count.
+    Splits the text from a file into chunks based on given splitter.
     
     Args:
-        pdf_texts: List of text extracted from PDF pages.
-        chunk_size: The number of tokens in one chunk.
-        chunk_overlap: The number of tokens shared between consecutive chunks.
-    
+        texts: List of text extracted from file.
+
     Returns:
         A list of text chunks.
     """
-    character_splitter = RecursiveCharacterTextSplitter(
-        separators=["\n\n", "\n", ". ", " ", ""],
-        chunk_size=chunk_size,
-        chunk_overlap=chunk_overlap
-    )
-    return character_splitter.split_text('\n\n'.join(pdf_texts))
-
-
-def _split_chunks_into_tokens(character_split_texts: List[str]) -> List[str]:
-    """
-    Splits text chunks into smaller chunks based on token count.
-    
-    Args:
-        character_split_texts: List of text chunks split by character count.
-    
-    Returns:
-        A list of text chunks split by token count.
-    """
-    # token_splitter = SentenceTransformersTokenTextSplitter(
-    #     model_name="sentence-transformers/distiluse-base-multilingual-cased-v2",
-    #     chunk_overlap=0,
-    #     tokens_per_chunk=256
-    # )
-    token_splitter = TokenTextSplitter(
-        chunk_overlap=0,
-        chunk_size=256
-    )
-    return [text for chunk in character_split_texts for text in token_splitter.split_text(chunk)]
+    return split_func(texts)
 
 
 def _create_and_populate_chroma_collection(token_split_texts: List[str], embedding_model) -> chromadb.Collection:

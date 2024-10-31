@@ -66,8 +66,10 @@ class RAGVizChain(BaseModel):
     """
     embedding_model: Optional[Callable] = None
     llm: Optional[Callable] = None
+    split_func: Optional[Callable] = None
     _chosen_embedding_model: Optional[Any] = None
     _chosen_llm: Optional[Any] = None
+    _chosen_split_func: Optional[Any] = None
     _vectordb: Optional[Any] = None
     _documents: _Documents = _Documents()
     _projector: Optional[Any] = None
@@ -78,6 +80,7 @@ class RAGVizChain(BaseModel):
         super().__init__(**data)
         self._set_embedding_model()
         self._set_llm()
+        self._set_splitter()
 
     def _set_embedding_model(self):
         """ Sets the embedding model """
@@ -93,12 +96,18 @@ class RAGVizChain(BaseModel):
         """ Sets the LLM model """
         self._chosen_llm = self.llm
 
+    def _set_splitter(self):
+        if self.split_func is None:
+            from .splitters import RecursiveChar2TokenSplitter
+            self._chosen_split_func = RecursiveChar2TokenSplitter()
+
+        else:
+            self._chosen_split_func = self.split_func
+
     def load_data(self,
-                 document_path: str,
-                 chunk_size: int = 1000,
-                 chunk_overlap: int = 0,
-                 verbose: bool = False,
-                 umap_params: dict = None):
+                  document_path: str,
+                  verbose: bool = False,
+                  umap_params: dict = None):
         """
         Load data from a PDF file and prepare it for exploration.
         
@@ -111,7 +120,7 @@ class RAGVizChain(BaseModel):
         """
         if verbose:
             print(" ~ Building the vector database...")
-        self._vectordb = build_vector_database(document_path, chunk_size, chunk_overlap, self._chosen_embedding_model)
+        self._vectordb = build_vector_database(document_path, self._chosen_split_func, self._chosen_embedding_model)
         if verbose:
             print("Completed Building Vector Database ✓")
         self._documents.embeddings = get_doc_embeddings(self._vectordb)
