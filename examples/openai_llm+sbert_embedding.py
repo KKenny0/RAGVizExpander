@@ -1,11 +1,13 @@
 import os
-from chromadb.utils.embedding_functions import SentenceTransformerEmbeddingFunction
 
 from ragvizexpander import RAGVizChain
 from ragvizexpander.splitters import RecursiveChar2TokenSplitter
+from ragvizexpander.embeddings import SentenceTransformerEmbeddings
 
 
-embedding_func = SentenceTransformerEmbeddingFunction(model_name=os.getenv("EMBEDDING_MODEL"))
+embedding_func = SentenceTransformerEmbeddings(
+    model_name=os.getenv("EMBEDDING_MODEL")
+)
 split_func = RecursiveChar2TokenSplitter()
 
 client = RAGVizChain(embedding_model=embedding_func,

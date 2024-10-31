@@ -129,9 +129,7 @@ class DocxLoader:
         Returns:
             List[str]: list of documents extracted from file
         """
-        file_path = Path(file_path).resolve()
-
-        self.doc = docx.Document(str(file_path))
+        self.doc = docx.Document(file_path)
         all_text, all_toc = self._extract_content()
         all_toc = "\n".join(all_toc)
         all_text = "\n".join(

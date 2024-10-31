@@ -1,11 +1,11 @@
 import os
-from chromadb.utils.embedding_functions import HuggingFaceEmbeddingFunction
 
 from ragvizexpander import RAGVizChain
 from ragvizexpander.splitters import RecursiveChar2TokenSplitter
+from ragvizexpander.embeddings import HuggingFaceEmbeddings
 
 
-embedding_func = HuggingFaceEmbeddingFunction(
+embedding_func = HuggingFaceEmbeddings(
     model_name=os.getenv("EMBEDDING_MODEL"),
     api_key=os.getenv("EMBEDDING_MODEL_API_KEY")
 )

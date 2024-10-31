@@ -122,7 +122,10 @@ def _load_data(file: str | Path) -> List[str]:
     Returns:
         A list of strings, each representing the text of a page.
     """
-    ext = Path(file).suffix.lower()
+    try:
+        ext = Path(file).suffix.lower()
+    except TypeError:
+        ext = Path(file.name).suffix.lower()
     reader = extractors.get(ext)
 
     docs = reader.load_data(file)

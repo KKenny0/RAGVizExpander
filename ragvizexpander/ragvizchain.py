@@ -2,10 +2,11 @@
 Ragxplorer.py
 """
 import os
+from os import PathLike
 from typing import (
     Optional,
     Any,
-    Callable
+    Callable, Union
 )
 from dotenv import load_dotenv
 
@@ -105,7 +106,7 @@ class RAGVizChain(BaseModel):
             self._chosen_split_func = self.split_func
 
     def load_data(self,
-                  document_path: str,
+                  document_path: Union[str, "PathLike[str]"],
                   verbose: bool = False,
                   umap_params: dict = None):
         """
