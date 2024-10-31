@@ -7,5 +7,5 @@ from ragvizexpander import RAGVizChain
 embedding_func = SentenceTransformerEmbeddingFunction(model_name=os.getenv("EMBEDDING_MODEL"))
 
 client = RAGVizChain(embedding_model=embedding_func)
-client.load_pdf("presentation.pdf", verbose=True)
+client.load_data("presentation.pdf", verbose=True)
 client.visualize_query("What are the top revenue drivers for Microsoft?")

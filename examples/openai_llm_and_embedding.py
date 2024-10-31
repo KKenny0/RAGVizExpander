@@ -11,5 +11,5 @@ embedding_func = OpenAIEmbeddingFunction(
 )
 
 client = RAGVizChain(embedding_model=embedding_func)
-client.load_pdf("presentation.pdf", verbose=True)
+client.load_data("presentation.pdf", verbose=True)
 client.visualize_query("What are the top revenue drivers for Microsoft?")

@@ -9,7 +9,7 @@ from typing import (
 )
 from dotenv import load_dotenv
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 import pandas as pd
 import umap
 
@@ -36,8 +36,6 @@ from .query_expansion import (
     generate_hypothetical_ans,
     generate_sub_qn
 )
-
-from .constants import OPENAI_EMBEDDING_MODELS
 
 load_dotenv()
 
@@ -95,7 +93,7 @@ class RAGVizChain(BaseModel):
         """ Sets the LLM model """
         self._chosen_llm = self.llm
 
-    def load_pdf(self,
+    def load_data(self,
                  document_path: str,
                  chunk_size: int = 1000,
                  chunk_overlap: int = 0,
