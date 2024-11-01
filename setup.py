@@ -21,7 +21,13 @@ setup(
         'langchain',
         'chromadb',
         'openai',
-        'pydantic'
+        'pydantic',
+        'json-repair',
+        'ollama',
+        'openai',
+        'python-docx',
+        'python-pptx',
+        'PyPDF2'
     ],
     classifiers=[
         'Programming Language :: Python :: 3',
