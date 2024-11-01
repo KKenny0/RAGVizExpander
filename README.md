@@ -5,6 +5,18 @@ where we aim to incorporate new features tailored to personal interests and enha
 
 You can use this program to test the effects of different embedding models and chunking strategies.
 
+## Install
+
+* Install from source
+```bash
+pip install -e .
+```
+
+* Install from PyPI
+```bash
+pip install ragvizexpander
+```
+
 ## Components
 
 Below are the components you can use:

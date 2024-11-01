@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='ragvizexpander',
-    version='0.1.10',
+    version='1.0.0',
     author='Kenny Wu',
     author_email='jdlow@live.cn',
     description='A open-source tool to to visualise your RAG documents 🔮.',
