@@ -40,6 +40,8 @@ Below are the components you can use:
 
 **Usge**: `streamlit run app.py`
 
+**Huggingface Space**: [RagVizExpander](https://huggingface.co/spaces/KennyAI01/RagVizExpander)
+
 # Features
 - [x] Custom LLM & Embedding model
 - [x] Custom chunking strategy

@@ -64,7 +64,7 @@ def _project_embeddings(embeddings: np.ndarray, umap_transform: umap.UMAP) -> np
     """
     umap_embeddings = np.empty((len(embeddings), 2))
     for i, embedding in tqdm(enumerate(embeddings), total=len(embeddings)):
-        if len(embeddings) == 1:
+        if len(embedding) == 1:
             embedding = embedding[0]
         umap_embeddings[i] = umap_transform.transform([embedding])
     return umap_embeddings
@@ -134,7 +134,8 @@ def plot_embeddings(df: pd.DataFrame) -> go.Figure:
             xanchor='center',
             yanchor='top',
             orientation='h'
-        )
+        ),
+        auto_size=True
     )
 
     return fig

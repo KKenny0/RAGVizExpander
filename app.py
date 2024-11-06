@@ -60,7 +60,9 @@ if not st.session_state['loaded']:
             )
         else:
             st.session_state["ollama_llm_model"] = st.text_input("Enter Ollama model name")
-            st.session_state["chosen_llm_model"] = ChatOllama(model_name=st.session_state["ollama_llm_model"])
+            st.session_state["ollama_llm_url"] = st.text_input("Enter Ollama service url")
+            st.session_state["chosen_llm_model"] = ChatOllama(model_name=st.session_state["ollama_llm_model"],
+                                                              host=st.session_state["ollama_llm_url"])
 
         st.markdown("""---""")
 
@@ -122,7 +124,7 @@ if not st.session_state['loaded']:
 else:
     col1, col2 = st.columns(2)
     st.session_state['query'] = col1.text_area("Enter your query here")
-    st.session_state['technique'] = col1.radio("Select retrival technique", ["naive", "HyDE", "multi_qns"], horizontal=True)
+    st.session_state['technique'] = col1.radio("Select retrival technique", ["naive", "HyAE", "multi_qns"], horizontal=True)
     st.session_state['top_k'] = col1.number_input("Top k", value=5, min_value=1, max_value=10, step=1)
     if col1.button("Execute Query"):
             st.session_state['chart'] = st.session_state["client"].visualize_query(st.session_state['query'], retrieval_method=st.session_state['technique'], top_k=st.session_state['top_k'])
