@@ -59,7 +59,7 @@ multidict==6.0.4
 mypy-extensions==1.0.0
 networkx==3.2.1
 nh3==0.2.15
-nltk==3.8.1
+nltk==3.9.1
 numba==0.58.1
 numpy==1.26.3
 oauthlib==3.2.2
@@ -142,3 +142,5 @@ python-docx
 python-pptx
 PyPDF2
 ragvizexpander
+unstructured[all-docs]
+docx2txt

@@ -7,9 +7,11 @@ import re
 from typing import List
 from pptx.enum.shapes import MSO_SHAPE_TYPE
 from pptx import Presentation
+from unstructured.partition.pptx import partition_pptx
+from llama_index.core import SimpleDirectoryReader
 
 
-class PptLoader:
+class PptxLoader:
     def _load_textframed_shapes(self, shapes):
         for shape in shapes:
             try:
@@ -126,3 +128,25 @@ class PptLoader:
         )
 
         return documents
+
+
+class UnstructuredPptxReader:
+    """Load data using unstructured library
+    Ref: https://docs.unstructured.io/open-source/core-functionality/partitioning#partition-pptx
+    """
+
+    def load_data(self, file_path: str) -> List[str]:
+        elements = partition_pptx(filename=file_path)
+        all_text = "\n".join([ele.text.strip() for ele in elements])
+        return [all_text]
+
+
+class LlamaIndexPptxReader:
+    """Load data using llama-index library
+    Ref: https://docs.llamaindex.ai/en/stable/module_guides/loading/simpledirectoryreader/
+    """
+
+    def load_data(self, file_path: str) -> List[str]:
+        reader = SimpleDirectoryReader(input_files=[file_path])
+        document = reader.load_data()[0]
+        return [document.text.strip()]

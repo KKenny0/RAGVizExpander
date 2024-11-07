@@ -34,6 +34,26 @@ Below are the components you can use:
 |             |         TXT         |                     Built-in                      |
 |             |         PDF         |                     Built-in                      |
 
+
+## Document loader
+
+| Type |     Tool     |                       Where                       |
+|:-----|:------------:|:-------------------------------------------------:|
+| WORD |   Default    | [Location](ragvizexpander/loaders/docx_loader.py) |
+|      |   doc2txt    | [Location](ragvizexpander/loaders/docx_loader.py) |
+|      | unstructured | [Location](ragvizexpander/loaders/docx_loader.py) |
+|      | llama-index  | [Location](ragvizexpander/loaders/docx_loader.py) |
+| PDF  |   Default    | [Location](ragvizexpander/loaders/pdf_loader.py)  |
+|      | unstructured | [Location](ragvizexpander/loaders/pdf_loader.py)  |
+|      | llama-index  | [Location](ragvizexpander/loaders/pdf_loader.py)  |
+| TXT  |   Default    | [Location](ragvizexpander/loaders/txt_loader.py)  |
+|      | unstructured | [Location](ragvizexpander/loaders/txt_loader.py)  |
+|      | llama-index  | [Location](ragvizexpander/loaders/txt_loader.py)  |
+| PPTX |   Default    | [Location](ragvizexpander/loaders/pptx_loader.py) |
+|      | unstructured | [Location](ragvizexpander/loaders/pptx_loader.py) |
+|      | llama-index  | [Location](ragvizexpander/loaders/pptx_loader.py) |
+
+
 ## DEMO
 
 ![Streamlit demo](./images/demo.png)

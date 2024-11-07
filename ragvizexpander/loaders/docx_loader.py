@@ -11,6 +11,10 @@ from docx.oxml.text.paragraph import CT_P
 from docx.table import _Cell, Table
 from docx.text.paragraph import Paragraph
 
+import docx2txt
+from unstructured.partition.docx import partition_docx
+from llama_index.core import SimpleDirectoryReader
+
 
 class DocxLoader:
     toc_pattern = r"|".join("^" + re.escape(name)
@@ -28,8 +32,6 @@ class DocxLoader:
         return arrays
 
     def _iter_block_items(self, parent):
-
-
         if isinstance(parent, doctwo):
             parent_elm = parent.element.body
         elif isinstance(parent, _Cell):
@@ -155,3 +157,35 @@ class DocxLoader:
             documents.extend([all_toc.strip()])
 
         return documents
+
+
+class Docx2txtReader:
+    """Load data using docx2txt library
+    Ref: https://github.com/ankushshah89/python-docx2txt
+    """
+
+    def load_data(self, file_path: str) -> List[str]:
+        text = docx2txt.process(file_path)
+        return [text]
+
+
+class UnstructuredDocxReader:
+    """Load data using unstructured library
+    Ref: https://docs.unstructured.io/open-source/core-functionality/partitioning#partition-docx
+    """
+
+    def load_data(self, file_path: str):
+        elements = partition_docx(filename=file_path)
+        all_text = "\n".join([ele.text.strip() for ele in elements])
+        return [all_text]
+
+
+class LlamaIndexDocxReader:
+    """Load data using llama-index library
+    Ref: https://docs.llamaindex.ai/en/stable/module_guides/loading/simpledirectoryreader/
+    """
+
+    def load_data(self, file_path: str) -> List[str]:
+        reader = SimpleDirectoryReader(input_files=[file_path])
+        document = reader.load_data()[0]
+        return [document.text.strip()]
