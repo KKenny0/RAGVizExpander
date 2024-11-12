@@ -1,8 +1,23 @@
-
-from .pdf_loader import PdfLoader
-from .pptx_loader import PptxLoader
-from .txt_loader import TxtLoader
-from .docx_loader import DocxLoader
+from .pdf_loader import (
+    PdfLoader,
+    UnstructuredPdfLoader,
+    LlamaIndexPdfLoader,
+)
+from .pptx_loader import (
+    PptxLoader,
+    UnstructuredPptxReader,
+    LlamaIndexPptxReader,
+)
+from .txt_loader import (
+    TxtLoader,
+    UnstructuredTxtLoader,
+    LlamaIndexTextLoader,
+)
+from .docx_loader import (
+    DocxLoader,
+    UnstructuredDocxReader,
+    LlamaIndexDocxReader,
+)
 
 
 extractors = {
@@ -10,4 +25,27 @@ extractors = {
     ".pptx": PptxLoader(),
     ".txt": TxtLoader(),
     ".docx": DocxLoader(),
+}
+
+app_extractors = {
+    ".pdf": {
+        "Default": PdfLoader(),
+        "Unstructured": UnstructuredPdfLoader(),
+        "LlamaIndex": LlamaIndexPdfLoader(),
+    },
+    ".pptx": {
+        "Default": PptxLoader(),
+        "Unstructured": UnstructuredPptxReader(),
+        "LlamaIndex": LlamaIndexPptxReader(),
+    },
+    ".txt": {
+        "Default": TxtLoader(),
+        "Unstructured": UnstructuredTxtLoader(),
+        "LlamaIndex": LlamaIndexTextLoader(),
+    },
+    ".docx": {
+        "Default": DocxLoader(),
+        "Unstructured": UnstructuredDocxReader(),
+        "LlamaIndex": LlamaIndexDocxReader(),
+    }
 }

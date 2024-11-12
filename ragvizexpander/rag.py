@@ -10,19 +10,14 @@ import uuid
 from typing import List, Any
 import chromadb
 import numpy as np
-from langchain.text_splitter import (
-    RecursiveCharacterTextSplitter,
-    TokenTextSplitter,
-
-)
-from .loaders import extractors
 
 
-def build_vector_database(file: Any, split_func: Any, embedding_model: Any) -> chromadb.Collection:
+def build_vector_database(reader: Any, file: Any, split_func: Any, embedding_model: Any) -> chromadb.Collection:
     """
     Builds a vector database from a PDF file by splitting the text into chunks and embedding them.
     
     Args:
+        loader:
         file: The file to process.
         split_func:
         embedding_model:
@@ -30,7 +25,7 @@ def build_vector_database(file: Any, split_func: Any, embedding_model: Any) -> c
     Returns:
         A Chroma collection object containing the embedded chunks.
     """
-    texts = _load_data(file)
+    texts = _load_data(reader, file)
     split_texts = _split_text_into_chunks(texts, split_func)
     chroma_collection = _create_and_populate_chroma_collection(split_texts, embedding_model)
     return chroma_collection
@@ -67,7 +62,7 @@ def _create_and_populate_chroma_collection(token_split_texts: List[str], embeddi
     return chroma_collection
 
 
-def query_chroma(chroma_collection: chromadb.Collection, query: str, top_k: int) -> List[str]:
+def query_chroma(chroma_collection: chromadb.Collection, query: str | List[str], top_k: int) -> List[str]:
     """
     Queries the Chroma collection for the top_k most relevant chunks to the input query.
     
@@ -79,7 +74,9 @@ def query_chroma(chroma_collection: chromadb.Collection, query: str, top_k: int)
     Returns:
         A list of retrieved chunk IDs.
     """
-    results = chroma_collection.query(query_texts=[query], n_results=top_k, include=['documents', 'embeddings'])
+    if isinstance(query, str):
+        query = [query]
+    results = chroma_collection.query(query_texts=query, n_results=top_k, include=['documents', 'embeddings'])
     retrieved_id = results['ids'][0]
     return retrieved_id
 
@@ -112,22 +109,17 @@ def get_docs(chroma_collection: chromadb.Collection) -> List[str]:
     return documents
 
 
-def _load_data(file: str | Path) -> List[str]:
+def _load_data(reader, file: str | Path) -> List[str]:
     """
     Loads and extracts text from a file.
     
     Args:
+        loader:
         file: The file to load.
     
     Returns:
         A list of strings, each representing the text of a page.
     """
-    try:
-        ext = Path(file).suffix.lower()
-    except TypeError:
-        ext = Path(file.name).suffix.lower()
-    reader = extractors.get(ext)
-
     docs = reader.load_data(file)
     texts = [p.strip() for p in docs if p]
     return texts

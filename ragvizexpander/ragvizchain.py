@@ -3,6 +3,7 @@ Ragxplorer.py
 """
 import os
 from os import PathLike
+from pathlib import Path
 from typing import (
     Optional,
     Any,
@@ -52,6 +53,7 @@ class _Query(BaseModel):
     original_query: Optional[Any] = None
     original_query_projection: Optional[Any] = None
     actual_search_queries: Optional[Any] = None
+    extend_queries: Optional[Any] = None
     retrieved_docs: Optional[Any] = None
 
 
@@ -67,6 +69,7 @@ class RAGVizChain(BaseModel):
     """
     embedding_model: Optional[Callable] = None
     llm: Optional[Callable] = None
+    reader: Optional[Any] = None
     split_func: Optional[Callable] = None
     _chosen_embedding_model: Optional[Any] = None
     _chosen_llm: Optional[Any] = None
@@ -105,23 +108,39 @@ class RAGVizChain(BaseModel):
         else:
             self._chosen_split_func = self.split_func
 
+    def _set_reader(self, file_path):
+        from .loaders import extractors
+
+        try:
+            ext = Path(file_path).suffix.lower()
+        except TypeError:
+            ext = Path(file_path.name).suffix.lower()
+
+        extractor = extractors.get(ext)
+        self.reader = extractor
+
     def load_data(self,
                   document_path: Union[str, "PathLike[str]"],
+                  reader=None,
                   verbose: bool = False,
                   umap_params: dict = None):
         """
-        Load data from a PDF file and prepare it for exploration.
+        Load data from a file and prepare it for exploration.
         
         Args:
-            document_path: Path to the PDF document to load.
-            chunk_size: Size of the chunks to split the document into.
-            chunk_overlap: Number of tokens to overlap between chunks.
+            document_path: Path to the document to load.
+            reader:
             verbose:
             umap_params:
         """
+        if reader is None:
+            self._set_reader(document_path)
         if verbose:
             print(" ~ Building the vector database...")
-        self._vectordb = build_vector_database(document_path, self._chosen_split_func, self._chosen_embedding_model)
+        self._vectordb = build_vector_database(self.reader,
+                                               document_path,
+                                               self._chosen_split_func,
+                                               self._chosen_embedding_model)
         if verbose:
             print("Completed Building Vector Database ✓")
         self._documents.embeddings = get_doc_embeddings(self._vectordb)
@@ -138,7 +157,11 @@ class RAGVizChain(BaseModel):
         if verbose:
             print("Completed reducing dimensionality of embeddings ✓")
 
-    def visualize_query(self, query: str, retrieval_method: str = "naive", top_k: int = 5, query_shape_size: int = 5,
+    def visualize_query(self,
+                        query: str,
+                        retrieval_method: str = "Naive",
+                        top_k: int = 5,
+                        query_shape_size: int = 5,
                         import_projection_data: pd.DataFrame = None) -> go.Figure:
         if import_projection_data is not None:
             self._VizData.base_df = import_projection_data
@@ -146,14 +169,15 @@ class RAGVizChain(BaseModel):
             if self._vectordb is None or self._VizData.base_df is None:
                 raise RuntimeError("Please load the pdf first.")
 
-        if retrieval_method not in ["naive", "HyDE", "multi_qns"]:
-            raise ValueError("Invalid retrieval method. Please use naive, HyDE, or multi_qns.")
+        if retrieval_method not in ["Naive", "HyAE", "Multi-Sub-Questions"]:
+            raise ValueError("Invalid retrieval method. Please use Naive, HyAE, or Multi-Sub-Questions.")
 
         self._query.original_query = query
 
         self._query.original_query_projection = get_projections(
             embedding=[self._chosen_embedding_model(self._query.original_query)],
-            umap_transform=self._projector)
+            umap_transform=self._projector
+        )
 
         self._VizData.query_df = pd.DataFrame({"x": [self._query.original_query_projection[0][0]],
                                                "y": [self._query.original_query_projection[1][0]],
@@ -161,16 +185,40 @@ class RAGVizChain(BaseModel):
                                                "category": "Original Query",
                                                "size": query_shape_size})
 
-        if retrieval_method == "naive":
+        if retrieval_method == "Naive":
             self._query.actual_search_queries = self._query.original_query
 
-        elif retrieval_method == "HyDE":
-            self._query.actual_search_queries = generate_hypothetical_ans(query=self._query.original_query,
-                                                                          client=self._chosen_llm)
+        elif retrieval_method == "HyAE":
+            self._query.extend_queries = [generate_hypothetical_ans(query=self._query.original_query,
+                                                                    client=self._chosen_llm)]
+            self._query.actual_search_queries = [self._query.extend_queries[0], self._query.original_query]
 
-        elif retrieval_method == "multi_qns":
-            self._query.actual_search_queries = generate_sub_qn(query=self._query.original_query,
-                                                                client=self._chosen_llm)
+            hyp_ans_projection = get_projections(
+                embedding=[self._chosen_embedding_model(self._query.extend_queries)],
+                umap_transform=self._projector
+            )
+            hyp_ans_df = pd.DataFrame({"x": [hyp_ans_projection[0][0]],
+                                       "y": [hyp_ans_projection[1][0]],
+                                       "document_cleaned": self._query.extend_queries[0],
+                                       "category": "Hypothetical Ans",
+                                       "size": query_shape_size})
+            self._VizData.query_df = pd.concat([hyp_ans_df, self._VizData.query_df], axis=0)
+
+        elif retrieval_method == "Multi-Sub-Questions":
+            self._query.extend_queries = generate_sub_qn(query=self._query.original_query,
+                                                         client=self._chosen_llm)
+            self._query.actual_search_queries = self._query.extend_queries + [self._query.original_query]
+
+            sub_qn_projection = get_projections(
+                embedding=self._chosen_embedding_model(self._query.extend_queries),
+                umap_transform=self._projector
+            )
+            sub_qn_df = pd.DataFrame({"x": [sub_qn_projection[0][0]],
+                                      "y": [sub_qn_projection[1][0]],
+                                      "document_cleaned": query,
+                                      "category": "Sub-Questions",
+                                      "size": query_shape_size})
+            self._VizData.query_df = pd.concat([sub_qn_df, self._VizData.query_df], axis=0)
 
         self._query.retrieved_docs = query_chroma(chroma_collection=self._vectordb,
                                                   query=self._query.actual_search_queries,
@@ -246,6 +294,14 @@ class RAGVizChain(BaseModel):
         Export the UMAP projector.
         """
         return self._projector
+
+    def export_query_extension(self):
+        return self._query.extend_queries
+
+    def visualize_chunking(self):
+        all_docs = self._documents.text
+        retrieved_ids = self._query.retrieved_docs
+        return retrieved_ids, all_docs
 
     def load_projector(self, umap_transform: umap.UMAP, recompute_projections: bool = False):
         """

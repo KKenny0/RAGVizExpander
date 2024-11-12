@@ -88,7 +88,7 @@ def prepare_projections_df(document_ids: List[str], document_projections: Tuple[
                        "y": document_projections[1]})
 
     df['document'] = document_text
-    df['document_cleaned'] = df.document.str.wrap(80).apply(lambda x: x.replace('\n', '<br>'))
+    df['document_cleaned'] = df.document.str.wrap(50).apply(lambda x: x.replace('\n', '<br>'))
     df['size'] = PLOT_SIZE
     df['category'] = "Chunks"
 
@@ -134,8 +134,7 @@ def plot_embeddings(df: pd.DataFrame) -> go.Figure:
             xanchor='center',
             yanchor='top',
             orientation='h'
-        ),
-        auto_size=True
+        )
     )
 
     return fig

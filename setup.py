@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='ragvizexpander',
-    version='1.0.0',
+    version='1.1.0',
     author='Kenny Wu',
     author_email='jdlow@live.cn',
     description='A open-source tool to to visualise your RAG documents 🔮.',
@@ -34,5 +34,5 @@ setup(
         'License :: OSI Approved :: MIT License',
         'Operating System :: OS Independent',
     ],
-    python_requires='>=3.8',
+    python_requires='>=3.10',
 )

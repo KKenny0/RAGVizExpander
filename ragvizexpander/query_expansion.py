@@ -29,9 +29,9 @@ def generate_sub_qn(query: str, client) -> List[str]:
         OpenAIError: If an error occurs in the OpenAI API call.
     """
     try:
+        client.config.update({"response_format": "json_object"})
         sub_qns = _chat_completion(MULTIPLE_QNS_SYS_MSG,
                                    query,
-                                   'json_object',
                                    client)
     except Exception as e:
         raise RuntimeError(f"Error in generating sub-questions: {e}") from e
@@ -53,20 +53,19 @@ def generate_hypothetical_ans(query: str, client) -> str:
         OpenAIError: If an error occurs in the OpenAI API call.
     """
     try:
-        hyp_ans = _chat_completion(HYDE_SYS_MSG, query, 'text', client)
+        hyp_ans = _chat_completion(HYDE_SYS_MSG, query, client)
     except Exception as e:
         raise RuntimeError(f"Error in generating hypothetical answer: {e}") from e
     return hyp_ans
 
 
-def _chat_completion(sys_msg: str, prompt: str, response_format: str, client) -> Union[str, List[str]]:
+def _chat_completion(sys_msg: str, prompt: str, client) -> Union[str, List[str]]:
     """
     A helper function to perform chat completions using the OpenAI API.
 
     Args:
         sys_msg (str): The system message for setting up the context.
         prompt (str): The user prompt for generating the completion.
-        response_format (str): The expected format of the response ('text' or 'json_object').
 
     Returns:
         Union[str, List[str]]: The response from the chat completion, either as text or a list.
@@ -74,6 +73,6 @@ def _chat_completion(sys_msg: str, prompt: str, response_format: str, client) ->
     Raises:
         OpenAIError: If an error occurs in the OpenAI API call.
     """
-    output = client(sys_msg, prompt, response_format)
+    output = client(sys_msg, prompt)
 
     return output
