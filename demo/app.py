@@ -235,6 +235,12 @@ else:
 
         st.divider()
 
+        st.session_state['llm_config'] = {
+            "temperature": st.session_state['llm_temperature'],
+            "max_tokens": st.session_state['llm_max_tokens'],
+            "response_format": "json_object" if st.session_state['llm_json_mode'] else None,
+        }
+
         advanced_option_on = st.toggle("### Advanced")
         if advanced_option_on:
             st.session_state['llm_top_p'] = st.slider(
@@ -246,13 +252,9 @@ else:
             )
             st.session_state['llm_seed'] = st.text_input("**Seed**")
 
-        st.session_state['llm_config'] = {
-            "temperature": st.session_state['llm_temperature'],
-            "max_tokens": st.session_state['llm_max_tokens'],
-            "response_format": "json_object" if st.session_state['llm_json_mode'] else None,
-            "top_p": st.session_state['llm_top_p'] if st.session_state['llm_top_p'] else 1.0,
-            "seed": None if not st.session_state['llm_seed'] else st.session_state['llm_seed'],
-        }
+            st.session_state['llm_config'].update({
+                "top_p": st.session_state['llm_top_p'],
+                "seed": None if not st.session_state['llm_seed'] else st.session_state['llm_seed']})
 
         st.session_state['client'].config_llm(st.session_state['llm_config'])
 

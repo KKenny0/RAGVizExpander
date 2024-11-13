@@ -1,3 +1,4 @@
+chroma-hnswlib==0.7.3
 chromadb==0.4.22
 docx2txt==0.8
 json_repair==0.30.0
