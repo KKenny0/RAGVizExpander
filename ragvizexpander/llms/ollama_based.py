@@ -8,7 +8,7 @@ from json_repair import repair_json
 
 class ChatOllama:
     """Ollama chat model"""
-    def __init__(self, config=None):
+    def __init__(self, host=None, model=None):
         try:
             import ollama
         except ImportError:
@@ -16,17 +16,19 @@ class ChatOllama:
                 "The ollama python package is not installed. "
                 "Please install it with `pip install ollama`"
             )
-
-        if config:
-            self.host = config.get("host", "http://localhost:11434")
-            self._client = ollama.Client(host=self.host)
-        self.config = config
+        if not host:
+            self.host = "http://localhost:11434"
+        else:
+            self.host = host
+        self._client = ollama.Client(host=self.host)
+        self.model = model
+        self.config = {}
 
     def __call__(self, sys_msg: str, prompt: str) -> Union[str, List[str]]:
         response = self._client.chat(
             messages=[{'role': 'system', 'content': sys_msg},
                       {'role': 'user', 'content': prompt}],
-            model=self.config.get("model"),
+            model=self.model,
             options=self.config
         )
 

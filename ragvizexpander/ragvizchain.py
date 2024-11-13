@@ -119,6 +119,9 @@ class RAGVizChain(BaseModel):
         extractor = extractors.get(ext)
         self.reader = extractor
 
+    def config_llm(self, config):
+        self._chosen_llm.config.update(config)
+
     def load_data(self,
                   document_path: Union[str, "PathLike[str]"],
                   reader=None,
@@ -213,11 +216,11 @@ class RAGVizChain(BaseModel):
                 embedding=self._chosen_embedding_model(self._query.extend_queries),
                 umap_transform=self._projector
             )
-            sub_qn_df = pd.DataFrame({"x": [sub_qn_projection[0][0]],
-                                      "y": [sub_qn_projection[1][0]],
-                                      "document_cleaned": query,
-                                      "category": "Sub-Questions",
-                                      "size": query_shape_size})
+            sub_qn_df = pd.DataFrame({"x": sub_qn_projection[0],
+                                      "y": sub_qn_projection[1],
+                                      "document_cleaned": self._query.extend_queries})
+            sub_qn_df['category'] = "Sub-Questions"
+            sub_qn_df['size'] = query_shape_size
             self._VizData.query_df = pd.concat([sub_qn_df, self._VizData.query_df], axis=0)
 
         self._query.retrieved_docs = query_chroma(chroma_collection=self._vectordb,

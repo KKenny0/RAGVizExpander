@@ -61,40 +61,38 @@ if not st.session_state['loaded']:
 
                     st.session_state['file_reader'] = loader_map[st.session_state['file_reader_type']]
 
-        st.markdown("""---""")
+        st.divider()
 
         # --- setting llm model
         llm_on = st.toggle("### Settings for *LLM* model")
+        st.caption("For generating hypothetical answers and sub-questions")
         if llm_on:
             st.session_state['llm_model_type'] = st.radio("**Select type of llm model**",
                                                           ["OpenAI", "Ollama", "Llama-Cpp"],
                                                           horizontal=True)
 
             if st.session_state['llm_model_type'] == "OpenAI":
-                st.session_state['openai_llm_config'] = st.text_area(
-                    """Enter the OpenAI LLM specification in YAML format,
-                    Specific params can be referenced：https://platform.openai.com/docs/api-reference/chat/create""",
-                    placeholder="api_key: null\nbase_url: null\nmodel: null\ntop_p: 0.9\n"
-                )
-                st.session_state['chosen_llm_model'] = ChatOpenAI(yaml.load(st.session_state['openai_llm_config'],
-                                                                            Loader=YAMLLoader))
-            elif st.session_state['llm_model_type'] == "Ollama":
-                st.session_state['ollama_llm_config'] = st.text_area(
-                    """Enter the Ollama LLM specification in YAML format,
-                    Specific params can be referenced：https://github.com/ollama/ollama/blob/main/docs/modelfile.md#parameter""",
-                    placeholder="model: null\nhost: null\n"
-                )
-                st.session_state['chosen_llm_model'] = ChatOllama(config=yaml.load(st.session_state['ollama_llm_config'],
-                                                                                   Loader=YAMLLoader))
-            else:
-                st.session_state['llama_cpp_llm_config'] = st.text_area(
-                    """Enter the LlamaCpp LLM specification in YAML format,
-                    Specific params can be referenced：https://llama-cpp-python.readthedocs.io/en/latest/api-reference/#llama_cpp.Llama.create_chat_completion
-                    """,
-                    placeholder="model_path: null\nchat_format: null\ntemperature: 0.7"
-                )
+                st.session_state['openai_base_url'] = st.text_input("Enter OpenAI LLM API Base")
+                st.session_state['openai_api_key'] = st.text_input("Enter OpenAI LLM API Key")
+                st.session_state['openai_llm_model'] = st.text_input("Enter OpenAI LLM Model")
+                st.session_state['chosen_llm_model'] = ChatOpenAI(
+                    base_url=st.session_state['openai_base_url'],
+                    api_key=st.session_state['openai_api_key'],
+                    model=st.session_state['openai_llm_model'])
 
-        st.markdown("""---""")
+            elif st.session_state['llm_model_type'] == "Ollama":
+                st.session_state['ollama_llm_host'] = st.text_input(
+                    "Enter Ollama LLM Host",
+                    placeholder="default to http://localhost:11434")
+                st.session_state['ollama_llm_model'] = st.text_input("Enter Ollama LLM model")
+                st.session_state['chosen_llm_model'] = ChatOllama(host=st.session_state['ollama_llm_host'],
+                                                                  model=st.session_state['ollama_llm_model'])
+
+            else:
+                st.session_state['llama_cpp_model_path'] = st.text_input("Enter llama.cpp LLM model path ")
+                st.session_state['chosen_llm_model'] = ChatLlamaCpp(model_path=st.session_state['llama_cpp_model_path'])
+
+        st.divider()
 
         # --- setting embedding model
         embedding_on = st.toggle("### Settings for *EMBEDDING* model")
@@ -119,7 +117,7 @@ if not st.session_state['loaded']:
             elif st.session_state['embedding_model_type'] == "Ollama":
                 st.session_state['ollama_emb_model'] = st.text_input("Enter Ollama Embedding Model Name, Ref: https://ollama.com/library")
                 st.session_state['ollama_host_emb'] = st.text_input("Enter Ollama Embedding service url",
-                                                                    placeholder="can be ignored")
+                                                                    placeholder="default to http://localhost:11434")
                 st.session_state['chosen_embedding_model'] = OllamaEmbeddings(
                     model_name=st.session_state['ollama_emb_model'],
                     host=st.session_state['ollama_host_emb']
@@ -145,7 +143,7 @@ if not st.session_state['loaded']:
                     api_url=st.session_state['tei_api_url']
                 )
 
-        st.markdown("""---""")
+        st.divider()
 
         # --- setting chunking parameters
         chunking_on = st.toggle("### Settings for *CHUNKING* model")
@@ -216,12 +214,59 @@ if not st.session_state['loaded']:
             st.session_state['loaded'] = True
             st.rerun()
 else:
+    with st.sidebar:
+        st.subheader("Parameters")
+        st.caption("Used by `HyAE` and `Multi-Sub-Questions` retrival techniques.")
+        st.session_state['llm_temperature'] = st.slider(
+            "**Temperature**",
+            value=0.8,
+            min_value=0.0,
+            max_value=1.0,
+            step=0.1,
+        )
+        st.session_state['llm_max_tokens'] = st.slider(
+            "**Max Tokens**",
+            value=1024,
+            min_value=0,
+            max_value=8192,
+            step=1,
+        )
+        st.session_state['llm_json_mode'] = st.checkbox("**JSON Mode**")
+
+        st.divider()
+
+        advanced_option_on = st.toggle("### Advanced")
+        if advanced_option_on:
+            st.session_state['llm_top_p'] = st.slider(
+                "**Top P**",
+                value=1.0,
+                min_value=0.0,
+                max_value=1.0,
+                step=0.1
+            )
+            st.session_state['llm_seed'] = st.text_input("**Seed**")
+
+        st.session_state['llm_config'] = {
+            "temperature": st.session_state['llm_temperature'],
+            "max_tokens": st.session_state['llm_max_tokens'],
+            "response_format": "json_object" if st.session_state['llm_json_mode'] else None,
+            "top_p": st.session_state['llm_top_p'] if st.session_state['llm_top_p'] else 1.0,
+            "seed": None if not st.session_state['llm_seed'] else st.session_state['llm_seed'],
+        }
+
+        st.session_state['client'].config_llm(st.session_state['llm_config'])
+
     with st.container():
+
+        def erase_llm_gen():
+            llm_gen_placeholder.empty()
+
         col1, col2 = st.columns(2)
         st.session_state['query'] = col1.text_area("**Enter your query here**")
         st.session_state['technique'] = col1.radio("**Select retrival technique**",
                                                    ["Naive", "HyAE", "Multi-Sub-Questions"],
                                                    horizontal=True)
+
         if st.session_state['technique'] == "HyAE":
             st.session_state['hyae_prompt'] = col1.text_area("**Prompt used by LLM to generate a hypothetical answer**",
                                                              value=HYDE_SYS_MSG)
@@ -249,11 +294,13 @@ else:
             llm_gen = []
             for q in st.session_state['query_extension']:
                 llm_gen.append(f"- :violet[{q}]")
-            llm_gen_placeholder.markdown("\n".join(llm_gen))
+            llm_gen_placeholder.info("\n".join(llm_gen))
 
         if col1.button("Reset Application"):
             st.session_state['loaded'] = False
             st.rerun()
+
+    st.divider()
 
     if st.session_state['chart'] is not None:
         st.session_state['retrieved_ids'], st.session_state['all_docs'] = st.session_state['client'].visualize_chunking()

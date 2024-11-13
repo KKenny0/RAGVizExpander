@@ -22,3 +22,4 @@ unstructured[all]
 pdfminer.six
 pi-heif
 unstructured-inference
+llama-cpp-python

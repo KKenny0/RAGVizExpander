@@ -1,32 +1,29 @@
-from typing import (
-    Union,
-    List,
-)
 import json
+from typing import Union, List
 from json_repair import repair_json
 
 
-class ChatOpenAI:
-    """OpenAI chat model"""
-    def __init__(self, base_url=None, api_key=None, model=None):
+class ChatLlamaCpp:
+    """LlamaCpp chat model"""
+    def __init__(self, model_path=None):
         try:
-            from openai import OpenAI
+            import llama_cpp
         except ImportError:
             raise ValueError(
-                "The openai python package is not installed. Please install it with `pip install openai`"
+                "The llama-cpp-python package is not installed. "
+                "Please install it using `pip install llama-cpp-python`"
             )
-        self._client = OpenAI(api_key=api_key, base_url=base_url)
-        self.model = model
+        if model_path:
+            self._client = llama_cpp.Llama(model_path=model_path)
         self.config = {}
 
     def __call__(self, sys_msg: str, prompt: str) -> Union[str, List[str]]:
-        response = self._client.chat.completions.create(
+        response = self._client.create_chat_completion(
             messages=[{'role': 'system', 'content': sys_msg},
                       {'role': 'user', 'content': prompt}],
-            model=self.model,
             **self.config
         )
-        output = response.choices[0].message.content
+        output = response['choices'][0]['text']
 
         if "response_format" in self.config and self.config['response_format'] == "json_object":
             json_output = repair_json(output)
