@@ -37,21 +37,23 @@ Below are the components you can use:
 
 ## Document loader
 
-| Type |     Tool     |                       Where                       |
-|:-----|:------------:|:-------------------------------------------------:|
-| WORD |   Default    | [Location](ragvizexpander/loaders/docx_loader.py) |
-|      |   doc2txt    | [Location](ragvizexpander/loaders/docx_loader.py) |
-|      | unstructured | [Location](ragvizexpander/loaders/docx_loader.py) |
-|      | llama-index  | [Location](ragvizexpander/loaders/docx_loader.py) |
-| PDF  |   Default    | [Location](ragvizexpander/loaders/pdf_loader.py)  |
-|      | unstructured | [Location](ragvizexpander/loaders/pdf_loader.py)  |
-|      | llama-index  | [Location](ragvizexpander/loaders/pdf_loader.py)  |
-| TXT  |   Default    | [Location](ragvizexpander/loaders/txt_loader.py)  |
-|      | unstructured | [Location](ragvizexpander/loaders/txt_loader.py)  |
-|      | llama-index  | [Location](ragvizexpander/loaders/txt_loader.py)  |
-| PPTX |   Default    | [Location](ragvizexpander/loaders/pptx_loader.py) |
-|      | unstructured | [Location](ragvizexpander/loaders/pptx_loader.py) |
-|      | llama-index  | [Location](ragvizexpander/loaders/pptx_loader.py) |
+| Type |     Tool     |                              Where                              |
+|:-----|:------------:|:---------------------------------------------------------------:|
+| WORD |   Default    |                                                                 |
+|      | unstructured | [unstructured](https://github.com/Unstructured-IO/unstructured) |
+|      | llama-index  |     [LlamaIndex](https://github.com/run-llama/llama_index)      |
+|      |   docling    |           [Docling](https://github.com/DS4SD/docling)           |
+| PDF  |   Default    |                                                                 |
+|      | unstructured |                                                                 |
+|      | llama-index  |                                                                 |
+|      |   docling    |                                                                 |
+| TXT  |   Default    |                                                                 |
+|      | unstructured |                                                                 |
+|      | llama-index  |                                                                 |
+| PPTX |   Default    |                                                                 |
+|      | unstructured |                                                                 |
+|      | llama-index  |                                                                 |
+|      |   docling    |                                                                 |
 
 
 ## DEMO
