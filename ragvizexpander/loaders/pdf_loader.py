@@ -53,6 +53,3 @@ PdfLoader.register_strategies([
     PdfUnstructuredStrategy,
     PdfLlamaIndexStrategy
 ])
-
-# Register the loader with the factory
-LoaderFactory.register_loader(['.pdf'], PdfLoader)

@@ -95,6 +95,3 @@ DocxLoader.register_strategies([
     DocxUnstructuredStrategy,
     DocxLlamaIndexStrategy
 ])
-
-# Register the loader with the factory
-LoaderFactory.register_loader(['.docx'], DocxLoader)

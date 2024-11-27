@@ -1,36 +1,46 @@
-from typing import (
-    Union,
-    List,
-)
-import json
-from json_repair import repair_json
+from typing import Union, List, Dict
+from .base import BaseChat, BaseLLMClient
 
 
-class ChatOpenAI:
-    """OpenAI chat model"""
-    def __init__(self, base_url=None, api_key=None, model=None):
+class OpenAIClient(BaseLLMClient):
+    """OpenAI client factory"""
+    def __init__(self, api_key: str = None, base_url: str = None):
+        self.api_key = api_key
+        self.base_url = base_url
+
+    def create_client(self):
         try:
             from openai import OpenAI
         except ImportError:
             raise ValueError(
-                "The openai python package is not installed. Please install it with `pip install openai`"
+                "The openai python package is not installed. "
+                "Please install it with `pip install openai`"
             )
-        self._client = OpenAI(api_key=api_key, base_url=base_url)
+        return OpenAI(api_key=self.api_key, base_url=self.base_url)
+
+
+class ChatOpenAI(BaseChat):
+    """OpenAI chat model implementation"""
+    def __init__(self, base_url: str = None, api_key: str = None, model: str = None):
+        self.base_url = base_url
+        self.api_key = api_key
         self.model = model
-        self.config = {}
+        super().__init__()
+
+    def _initialize_client(self):
+        client_factory = OpenAIClient(self.api_key, self.base_url)
+        return client_factory.create_client()
+
+    def _create_chat_completion(self, messages: List[Dict[str, str]], **kwargs) -> str:
+        response = self._client.chat.completions.create(
+            messages=messages,
+            model=self.model,
+            **kwargs
+        )
+        return response.choices[0].message.content
 
     def __call__(self, sys_msg: str, prompt: str) -> Union[str, List[str]]:
-        response = self._client.chat.completions.create(
-            messages=[{'role': 'system', 'content': sys_msg},
-                      {'role': 'user', 'content': prompt}],
-            model=self.model,
-            **self.config
-        )
-        output = response.choices[0].message.content
-
-        if "response_format" in self.config and self.config['response_format'] == "json_object":
-            json_output = repair_json(output)
-            output = json.loads(json_output)
-            output = list(output.values())
-
-        return output
+        messages = [{'role': 'system', 'content': sys_msg},
+                    {'role': 'user', 'content': prompt}]
+        output = self._create_chat_completion(messages, **self.config.get_config())
+        return self._format_output(output)

@@ -1,6 +1,7 @@
 """
 Streamlit app
 """
+from pathlib import Path
 
 try:
     __import__('pysqlite3')
@@ -73,7 +74,7 @@ if not st.session_state['loaded']:
             st.session_state['file_loader_type'] = st.radio("**Select type of file reader**",
                                                             ["Native", "Unstructured", "LlamaIndex"],
                                                             horizontal=True)
-            loader = LoaderFactory.get_loader(uploaded_file.name)
+            loader = loader_factory.get_loader(uploaded_file.name)
             ext = Path(uploaded_file.name).suffix.lower()
             loader.set_strategy(loader_mapper[ext.lower()][st.session_state['file_loader_type'].lower()])
             st.session_state['file_reader'] = loader
@@ -227,7 +228,7 @@ if not st.session_state['loaded']:
         main_page.empty()
         main_button.empty()
         with st.spinner("Building Vector DB"):
-            st.session_state['client'].load_data(uploaded_file, )
+            st.session_state['client'].load_data(uploaded_file)
             st.session_state['loaded'] = True
             st.rerun()
 else:

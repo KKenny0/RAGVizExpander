@@ -1,5 +1,7 @@
+import io
+
 from abc import ABC, abstractmethod
-from typing import List, Type, Dict
+from typing import List, Type, Dict, Union
 from pathlib import Path
 
 
@@ -43,12 +45,15 @@ class DocumentLoader(ABC):
         return strategy
     
     @abstractmethod
-    def load_data(self, file_path: str) -> List[str]:
+    def load_data(self, file_path: Union[str, io.BytesIO]) -> List[str]:
         """Load document data and return list of text content"""
         pass
 
-    def validate_file(self, file_path: str) -> bool:
+    def validate_file(self, file_path: Union[str, io.BytesIO]) -> bool:
         """Validate if file exists and has correct extension"""
+        if isinstance(file_path, io.BytesIO):
+            return True  # BytesIO is always valid
+
         path = Path(file_path)
         return path.exists() and path.suffix.lower() in self.supported_extensions()
     

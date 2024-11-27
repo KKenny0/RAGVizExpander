@@ -53,6 +53,3 @@ TxtLoader.register_strategies([
     TxtUnstructuredStrategy,
     TxtLlamaIndexStrategy
 ])
-
-# Register the loader with the factory
-LoaderFactory.register_loader(['.txt'], TxtLoader)

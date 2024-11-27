@@ -109,18 +109,18 @@ class RAGVizChain(BaseModel):
             self._chosen_split_func = self.split_func
 
     def _set_reader(self, file_path):
-        from .loaders import LoaderFactory
+        from .loaders import loader_factory
 
         try:
             ext = Path(file_path).suffix.lower()
         except TypeError:
             ext = Path(file_path.name).suffix.lower()
 
-        loader = LoaderFactory.get_loader(ext)
+        loader = loader_factory.get_loader(ext)
         self.reader = loader
 
     def config_llm(self, config):
-        self._chosen_llm.config.update(config)
+        self._chosen_llm.config.update_config(config)
 
     def load_data(self,
                   document_path: Union[str, "PathLike[str]"],
@@ -136,7 +136,7 @@ class RAGVizChain(BaseModel):
             verbose:
             umap_params:
         """
-        if reader is None:
+        if reader is None and self.reader is None:
             self._set_reader(document_path)
         if verbose:
             print(" ~ Building the vector database...")

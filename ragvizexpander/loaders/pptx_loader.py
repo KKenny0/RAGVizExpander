@@ -1,4 +1,3 @@
-from pathlib import Path
 from typing import List
 import re
 from pptx.enum.shapes import MSO_SHAPE_TYPE
@@ -109,6 +108,3 @@ PptxLoader.register_strategies([
     PptxUnstructuredStrategy,
     PptxLlamaIndexStrategy
 ])
-
-# Register the loader with the factory
-LoaderFactory.register_loader(['.pptx'], PptxLoader)
