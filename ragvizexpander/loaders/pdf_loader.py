@@ -1,9 +1,15 @@
+import io
+
+import tempfile
+
 from PyPDF2 import PdfReader
 from typing import List
 from unstructured.partition.pdf import partition_pdf
 from llama_index.core import SimpleDirectoryReader
+from docling.document_converter import DocumentConverter
 
-from .base import DocumentLoader, LoaderStrategy, LoaderFactory
+from .base import DocumentLoader, LoaderStrategy
+
 
 
 class PdfNativeStrategy(LoaderStrategy):
@@ -29,6 +35,21 @@ class PdfLlamaIndexStrategy(LoaderStrategy):
         reader = SimpleDirectoryReader(input_files=[file_path])
         document = reader.load_data()[0]
         return [document.text.strip()]
+
+
+class PdfDoclingStrategy(LoaderStrategy):
+    """docling loading strategy for PDF"""
+
+    def load(self, file_path) -> List[str]:
+        converter = DocumentConverter()
+        if isinstance(file_path, io.BytesIO):
+            with tempfile.NamedTemporaryFile(suffix=".docx") as temp:
+                temp.write(file_path.getbuffer())
+                temp.seek(0)
+                result = converter.convert(temp.name)
+        else:
+            result = converter.convert(file_path)
+        return [result.document.export_to_markdown()]
 
 
 class PdfLoader(DocumentLoader):

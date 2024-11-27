@@ -1,11 +1,16 @@
+import io
+
+import tempfile
+
 from typing import List
 import re
 from pptx.enum.shapes import MSO_SHAPE_TYPE
 from pptx import Presentation
 from unstructured.partition.pptx import partition_pptx
 from llama_index.core import SimpleDirectoryReader
+from docling.document_converter import DocumentConverter
 
-from .base import DocumentLoader, LoaderStrategy, LoaderFactory
+from .base import DocumentLoader, LoaderStrategy
 
 
 class PptxNativeStrategy(LoaderStrategy):
@@ -86,6 +91,21 @@ class PptxLlamaIndexStrategy(LoaderStrategy):
         return [document.text.strip()]
 
 
+class PptxDoclingStrategy(LoaderStrategy):
+    """docling loading strategy for PPTX"""
+
+    def load(self, file_path) -> List[str]:
+        converter = DocumentConverter()
+        if isinstance(file_path, io.BytesIO):
+            with tempfile.NamedTemporaryFile(suffix=".docx") as temp:
+                temp.write(file_path.getbuffer())
+                temp.seek(0)
+                result = converter.convert(temp.name)
+        else:
+            result = converter.convert(file_path)
+        return [result.document.export_to_markdown()]
+
+
 class PptxLoader(DocumentLoader):
     """PPTX document loader with multiple loading strategies"""
 
@@ -106,5 +126,6 @@ class PptxLoader(DocumentLoader):
 PptxLoader.register_strategies([
     PptxNativeStrategy,
     PptxUnstructuredStrategy,
-    PptxLlamaIndexStrategy
+    PptxLlamaIndexStrategy,
+    PptxDoclingStrategy,
 ])

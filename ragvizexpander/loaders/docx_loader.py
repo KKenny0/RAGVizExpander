@@ -1,5 +1,9 @@
-from typing import List
+import io
+
 import re
+from typing import List
+import tempfile
+
 import docx
 from docx.document import Document as doctwo
 from docx.oxml.table import CT_Tbl
@@ -9,8 +13,9 @@ from docx.text.paragraph import Paragraph
 
 from unstructured.partition.docx import partition_docx
 from llama_index.core import SimpleDirectoryReader
+from docling.document_converter import DocumentConverter
 
-from .base import DocumentLoader, LoaderStrategy, LoaderFactory
+from .base import DocumentLoader, LoaderStrategy
 
 
 class DocxNativeStrategy(LoaderStrategy):
@@ -73,6 +78,21 @@ class DocxLlamaIndexStrategy(LoaderStrategy):
         return [document.text.strip()]
 
 
+class DocxDoclingStrategy(LoaderStrategy):
+    """docling library loading strategy"""
+
+    def load(self, file_path) -> List[str]:
+        converter = DocumentConverter()
+        if isinstance(file_path, io.BytesIO):
+            with tempfile.NamedTemporaryFile(suffix=".docx") as temp:
+                temp.write(file_path.getbuffer())
+                temp.seek(0)
+                result = converter.convert(temp.name)
+        else:
+            result = converter.convert(file_path)
+        return [result.document.export_to_markdown()]
+
+
 class DocxLoader(DocumentLoader):
     """DOCX document loader with multiple loading strategies"""
 
@@ -93,5 +113,6 @@ class DocxLoader(DocumentLoader):
 DocxLoader.register_strategies([
     DocxNativeStrategy,
     DocxUnstructuredStrategy,
-    DocxLlamaIndexStrategy
+    DocxLlamaIndexStrategy,
+    DocxDoclingStrategy,
 ])

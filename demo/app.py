@@ -44,11 +44,13 @@ loader_mapper = {
         "native": PdfNativeStrategy(),
         "unstructured": PdfUnstructuredStrategy(),
         "llamaindex": PdfLlamaIndexStrategy(),
+        "docling": PdfDoclingStrategy(),
     },
     ".docx": {
         "native": DocxNativeStrategy(),
         "unstructured": DocxUnstructuredStrategy(),
         "llamaindex": DocxLlamaIndexStrategy(),
+        "docling": DocxDoclingStrategy(),
     },
     ".txt": {
         "native": TxtNativeStrategy(),
@@ -59,6 +61,7 @@ loader_mapper = {
         "native": PptxNativeStrategy(),
         "unstructured": PptxUnstructuredStrategy(),
         "llamaindex": PptxLlamaIndexStrategy(),
+        "docling": PptxDoclingStrategy(),
     },
 }
 
@@ -73,11 +76,11 @@ if not st.session_state['loaded']:
                                          label_visibility="collapsed",
                                          type=['pdf', 'docx', 'txt', 'pptx'])
         if uploaded_file is not None:
+            ext = Path(uploaded_file.name).suffix.lower()
             st.session_state['file_loader_type'] = st.radio("**Select type of file reader**",
-                                                            ["Native", "Unstructured", "LlamaIndex"],
+                                                            list(loader_mapper[ext.lower()].keys()),
                                                             horizontal=True)
             loader = loader_factory.get_loader(uploaded_file.name)
-            ext = Path(uploaded_file.name).suffix.lower()
             loader.set_strategy(loader_mapper[ext.lower()][st.session_state['file_loader_type'].lower()])
             st.session_state['file_reader'] = loader
 
@@ -110,8 +113,9 @@ if not st.session_state['loaded']:
                                                                   model=st.session_state['ollama_llm_model'])
 
             else:
-                st.session_state['llama_cpp_model_path'] = st.text_input("Enter llama.cpp LLM model path ")
-                st.session_state['chosen_llm_model'] = ChatLlamaCpp(model_path=st.session_state['llama_cpp_model_path'])
+                st.session_state['llama_cpp_model_path'] = st.text_input("Enter llama.cpp LLM model path")
+                if st.session_state['llama_cpp_model_path']:
+                    st.session_state['chosen_llm_model'] = ChatLlamaCpp(model_path=st.session_state['llama_cpp_model_path'])
 
         st.divider()
 
