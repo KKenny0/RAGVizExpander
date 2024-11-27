@@ -38,6 +38,7 @@ from .query_expansion import (
     generate_hypothetical_ans,
     generate_sub_qn
 )
+from .embeddings import EmbeddingsFactory
 
 load_dotenv()
 
@@ -91,8 +92,9 @@ class RAGVizChain(BaseModel):
         if self.embedding_model is None:
             if "OPENAI_API_KEY" not in os.environ:
                 raise OSError("OPENAI_API_KEY is not set")
-            self._chosen_embedding_model = OpenAIEmbeddingFunction(api_key=os.getenv("OPENAI_API_KEY"),
-                                                                   model_name=os.getenv("model_name"))
+            self._chosen_embedding_model = EmbeddingsFactory.create("openai",
+                                                                    api_key=os.getenv("OPENAI_API_KEY"),
+                                                                    model_name=os.getenv("model_name"))
         else:
             self._chosen_embedding_model = self.embedding_model
 

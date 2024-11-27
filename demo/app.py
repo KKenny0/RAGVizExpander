@@ -1,6 +1,8 @@
 """
 Streamlit app
 """
+import re
+
 from pathlib import Path
 
 try:
@@ -102,7 +104,8 @@ if not st.session_state['loaded']:
                 st.session_state['ollama_llm_host'] = st.text_input(
                     "Enter Ollama LLM Host",
                     placeholder="default to http://localhost:11434")
-                st.session_state['ollama_llm_model'] = st.text_input("Enter Ollama LLM model")
+                st.session_state['ollama_llm_model'] = st.text_input("Enter Ollama LLM model",
+                                                                     value="qwen2:7b-instruct-fp16")
                 st.session_state['chosen_llm_model'] = ChatOllama(host=st.session_state['ollama_llm_host'],
                                                                   model=st.session_state['ollama_llm_model'])
 
@@ -126,38 +129,44 @@ if not st.session_state['loaded']:
                                                                        "text-embedding-ada-002"])
                 st.session_state['openai_embed_api_key'] = st.text_input("Enter OpenAI Embedding API Key")
                 st.session_state['openai_embed_api_base'] = st.text_input("Enter OpenAI Embedding API Base")
-                st.session_state['chosen_embedding_model'] = OpenAIEmbeddings(
+                st.session_state['chosen_embedding_model'] = EmbeddingsFactory.create(
+                    "openai",
                     api_base=st.session_state['openai_embed_api_base'],
                     api_key=st.session_state['openai_embed_api_key'],
                     model_name=st.session_state['openai_embed_model'],
                 )
 
             elif st.session_state['embedding_model_type'] == "Ollama":
-                st.session_state['ollama_emb_model'] = st.text_input("Enter Ollama Embedding Model Name, Ref: https://ollama.com/library")
                 st.session_state['ollama_host_emb'] = st.text_input("Enter Ollama Embedding service url",
                                                                     placeholder="default to http://localhost:11434")
-                st.session_state['chosen_embedding_model'] = OllamaEmbeddings(
+                st.session_state['ollama_emb_model'] = st.text_input("Enter Ollama Embedding Model Name, Ref: https://ollama.com/library",
+                                                                     value="bge-m3")
+                st.session_state['chosen_embedding_model'] = EmbeddingsFactory.create(
+                    "ollama",
                     model_name=st.session_state['ollama_emb_model'],
                     host=st.session_state['ollama_host_emb']
                 )
 
             elif st.session_state['embedding_model_type'] == "SentenceTransformer":
                 st.session_state['st_emb_model'] = st.text_input("Enter SentenceTransformer Embedding Model Name, Ref: https://www.sbert.net/docs/sentence_transformer/pretrained_models.html#original-models")
-                st.session_state['chosen_embedding_model'] = SentenceTransformerEmbeddings(
+                st.session_state['chosen_embedding_model'] = EmbeddingsFactory.create(
+                    "sentence-transformer",
                     model_name=st.session_state['st_emb_model']
                 )
 
             elif st.session_state['embedding_model_type'] == "HuggingFace":
                 st.session_state['hf_embed_model'] = st.text_input("Enter HF repository name")
                 st.session_state['hf_api_key'] = st.text_input("Enter HF API key")
-                st.session_state['chosen_embedding_model'] = HuggingFaceEmbeddings(
+                st.session_state['chosen_embedding_model'] = EmbeddingsFactory.create(
+                    "huggingface",
                     model_name=st.session_state['hf_embed_model'],
                     api_key=st.session_state['hf_api_key']
                 )
 
             else:
                 st.session_state['tei_api_url'] = st.text_input("Enter TEI(Text-Embedding-Inference) api url")
-                st.session_state['chosen_embedding_model'] = TEIEmbeddings(
+                st.session_state['chosen_embedding_model'] = EmbeddingsFactory.create(
+                    "tei",
                     api_url=st.session_state['tei_api_url']
                 )
 
@@ -336,6 +345,6 @@ else:
             for i, doc in enumerate(st.session_state['all_docs']):
                 if i in id_map:
                     st.subheader(f"Retrieved-{id_map[i]}", anchor=f"Retrieved-{id_map[i]}")
-                    st.markdown(f":green[{doc}]")
+                    st.markdown(":green[{}]".format(re.sub('\s+', '', doc)))
                 else:
                     st.markdown(doc)
