@@ -2,32 +2,57 @@ from typing import List
 from unstructured.partition.text import partition_text
 from llama_index.core import SimpleDirectoryReader
 
+from .base import DocumentLoader, LoaderStrategy, LoaderFactory
 
-class TxtLoader:
-    def load_data(self, file: str) -> List[str]:
-        with open(file, "r", encoding="utf-8") as f:
+
+class TxtNativeStrategy(LoaderStrategy):
+    """Native text loading strategy"""
+
+    def load(self, file_path: str) -> List[str]:
+        with open(file_path, "r", encoding="utf-8") as f:
             text = f.read()
+        return [text.strip()]
 
-        return [text]
 
+class TxtUnstructuredStrategy(LoaderStrategy):
+    """Unstructured library loading strategy for text files"""
 
-class UnstructuredTxtLoader:
-    """Load data using unstructured library
-    Ref: https://docs.unstructured.io/open-source/core-functionality/partitioning#partition-text
-    """
-
-    def load_data(self, file_path: str):
+    def load(self, file_path: str) -> List[str]:
         elements = partition_text(file_path)
-        all_text = "\n".join([ele.text.strip() for ele in elements])
-        return [all_text]
+        return ["\n".join([ele.text.strip() for ele in elements])]
 
 
-class LlamaIndexTextLoader:
-    """Load data using llama-index library
-    Ref: https://docs.llamaindex.ai/en/stable/module_guides/loading/simpledirectoryreader/
-    """
+class TxtLlamaIndexStrategy(LoaderStrategy):
+    """LlamaIndex loading strategy for text files"""
 
-    def load_data(self, file_path: str) -> List[str]:
+    def load(self, file_path: str) -> List[str]:
         reader = SimpleDirectoryReader(input_files=[file_path])
         document = reader.load_data()[0]
         return [document.text.strip()]
+
+
+class TxtLoader(DocumentLoader):
+    """Text file loader with multiple loading strategies"""
+
+    def __init__(self, strategy: LoaderStrategy = None):
+        strategy = strategy or TxtNativeStrategy()
+        super().__init__(strategy)
+
+    def load_data(self, file_path: str) -> List[str]:
+        if not self.validate_file(file_path):
+            raise ValueError(f"Invalid or non-existent file: {file_path}")
+        return self._strategy.load(file_path)
+
+    def supported_extensions(self) -> List[str]:
+        return ['.txt']
+
+
+# Register valid strategies for TxtLoader
+TxtLoader.register_strategies([
+    TxtNativeStrategy,
+    TxtUnstructuredStrategy,
+    TxtLlamaIndexStrategy
+])
+
+# Register the loader with the factory
+LoaderFactory.register_loader(['.txt'], TxtLoader)

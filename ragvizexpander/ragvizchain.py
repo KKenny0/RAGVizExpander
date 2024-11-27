@@ -109,15 +109,15 @@ class RAGVizChain(BaseModel):
             self._chosen_split_func = self.split_func
 
     def _set_reader(self, file_path):
-        from .loaders import extractors
+        from .loaders import LoaderFactory
 
         try:
             ext = Path(file_path).suffix.lower()
         except TypeError:
             ext = Path(file_path.name).suffix.lower()
 
-        extractor = extractors.get(ext)
-        self.reader = extractor
+        loader = LoaderFactory.get_loader(ext)
+        self.reader = loader
 
     def config_llm(self, config):
         self._chosen_llm.config.update(config)
@@ -185,7 +185,7 @@ class RAGVizChain(BaseModel):
         self._VizData.query_df = pd.DataFrame({"x": [self._query.original_query_projection[0][0]],
                                                "y": [self._query.original_query_projection[1][0]],
                                                "document_cleaned": query,
-                                               "category": "Original Query",
+                                               "category": "原始查询",
                                                "size": query_shape_size})
 
         if retrieval_method == "Naive":
@@ -203,8 +203,10 @@ class RAGVizChain(BaseModel):
             hyp_ans_df = pd.DataFrame({"x": [hyp_ans_projection[0][0]],
                                        "y": [hyp_ans_projection[1][0]],
                                        "document_cleaned": self._query.extend_queries[0],
-                                       "category": "Hypothetical Ans",
+                                       "category": "假设性答案",
                                        "size": query_shape_size})
+            hyp_ans_df['document_cleaned'] = hyp_ans_df['document_cleaned'].str.wrap(50).apply(
+                lambda x: x.replace('\n', '<br>'))
             self._VizData.query_df = pd.concat([hyp_ans_df, self._VizData.query_df], axis=0)
 
         elif retrieval_method == "Multi-Sub-Questions":
@@ -219,7 +221,9 @@ class RAGVizChain(BaseModel):
             sub_qn_df = pd.DataFrame({"x": sub_qn_projection[0],
                                       "y": sub_qn_projection[1],
                                       "document_cleaned": self._query.extend_queries})
-            sub_qn_df['category'] = "Sub-Questions"
+            sub_qn_df['document_cleaned'] = sub_qn_df['document_cleaned'].str.wrap(50).apply(
+                lambda x: x.replace('\n', '<br>'))
+            sub_qn_df['category'] = "子问题"
             sub_qn_df['size'] = query_shape_size
             self._VizData.query_df = pd.concat([sub_qn_df, self._VizData.query_df], axis=0)
 
@@ -228,7 +232,7 @@ class RAGVizChain(BaseModel):
                                                   top_k=top_k)
 
         self._VizData.base_df.loc[
-            self._VizData.base_df['id'].isin(self._query.retrieved_docs), "category"] = "Retrieved"
+            self._VizData.base_df['id'].isin(self._query.retrieved_docs), "category"] = "召回块"
 
         self._VizData.visualisation_df = pd.concat([self._VizData.base_df, self._VizData.query_df], axis=0)
 

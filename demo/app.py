@@ -1,9 +1,6 @@
 """
 Streamlit app
 """
-import json
-
-from ragvizexpander.constants import HYDE_SYS_MSG, MULTIPLE_QNS_SYS_MSG
 
 try:
     __import__('pysqlite3')
@@ -13,16 +10,15 @@ try:
 except:
     pass
 
-import os
+import json
 import streamlit as st
-import yaml
 
 from ragvizexpander import RAGVizChain
 from ragvizexpander.llms import *
 from ragvizexpander.embeddings import *
 from ragvizexpander.splitters import *
-from ragvizexpander.loaders import app_extractors
-from utils import YAMLLoader
+from ragvizexpander.constants import HYDE_SYS_MSG, MULTIPLE_QNS_SYS_MSG
+from ragvizexpander.loaders import *
 
 st.set_page_config(
     page_title="RAGVizExpander Demo",
@@ -30,8 +26,6 @@ st.set_page_config(
     layout="wide"
 )
 
-os.environ['OPENAI_API_KEY'] = st.secrets["OPENAI_API_KEY"]
-os.environ['HF_API_KEY'] = st.secrets["HF_API_KEY"]
 
 if "chart" not in st.session_state:
     st.session_state['chart'] = None
@@ -41,6 +35,29 @@ if "query_extension" not in st.session_state:
 
 if "loaded" not in st.session_state:
     st.session_state['loaded'] = False
+
+loader_mapper = {
+    ".pdf": {
+        "native": PdfNativeStrategy(),
+        "unstructured": PdfUnstructuredStrategy(),
+        "llamaindex": PdfLlamaIndexStrategy(),
+    },
+    ".docx": {
+        "native": DocxNativeStrategy(),
+        "unstructured": DocxUnstructuredStrategy(),
+        "llamaindex": DocxLlamaIndexStrategy(),
+    },
+    ".txt": {
+        "native": TxtNativeStrategy(),
+        "unstructured": TxtUnstructuredStrategy(),
+        "llamaindex": TxtLlamaIndexStrategy(),
+    },
+    ".pptx": {
+        "native": PptxNativeStrategy(),
+        "unstructured": PptxUnstructuredStrategy(),
+        "llamaindex": PptxLlamaIndexStrategy(),
+    },
+}
 
 st.title("RAGVizExpander Demo🔬")
 st.markdown("📦 More details can be found at the GitHub repo [here](https://github.com/KKenny0/RAGVizExpander)")
@@ -53,13 +70,13 @@ if not st.session_state['loaded']:
                                          label_visibility="collapsed",
                                          type=['pdf', 'docx', 'txt', 'pptx'])
         if uploaded_file is not None:
-            for key, loader_map in app_extractors.items():
-                if key in uploaded_file.name:
-                    st.session_state['file_reader_type'] = st.radio("**Select type of file reader**",
-                                                                    list(loader_map.keys()),
-                                                                    horizontal=True)
-
-                    st.session_state['file_reader'] = loader_map[st.session_state['file_reader_type']]
+            st.session_state['file_loader_type'] = st.radio("**Select type of file reader**",
+                                                            ["Native", "Unstructured", "LlamaIndex"],
+                                                            horizontal=True)
+            loader = LoaderFactory.get_loader(uploaded_file.name)
+            ext = Path(uploaded_file.name).suffix.lower()
+            loader.set_strategy(loader_mapper[ext.lower()][st.session_state['file_loader_type'].lower()])
+            st.session_state['file_reader'] = loader
 
         st.divider()
 

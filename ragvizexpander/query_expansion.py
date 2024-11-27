@@ -5,11 +5,7 @@ This module provides functionalities for expanding queries using GPT-4 powered c
 It includes generating sub-questions and hypothetical answers for a given query.
 """
 
-import os
-import json
 from typing import List, Union
-
-from openai import OpenAI
 
 from .constants import MULTIPLE_QNS_SYS_MSG, HYDE_SYS_MSG
 

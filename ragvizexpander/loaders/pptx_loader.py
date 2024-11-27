@@ -1,17 +1,17 @@
 from pathlib import Path
-
-import unicodedata
-
-import pandas as pd
-import re
 from typing import List
+import re
 from pptx.enum.shapes import MSO_SHAPE_TYPE
 from pptx import Presentation
 from unstructured.partition.pptx import partition_pptx
 from llama_index.core import SimpleDirectoryReader
 
+from .base import DocumentLoader, LoaderStrategy, LoaderFactory
 
-class PptxLoader:
+
+class PptxNativeStrategy(LoaderStrategy):
+    """Native PPTX loading strategy using python-pptx"""
+
     def _load_textframed_shapes(self, shapes):
         for shape in shapes:
             try:
@@ -37,7 +37,6 @@ class PptxLoader:
     def _load_single_table(self, table) -> List[List[str]]:
         n_row = len(table.rows)
         n_col = len(table.columns)
-
         arrays = [["" for _ in range(n_row)] for _ in range(n_col)]
 
         for i in range(n_row):
@@ -46,107 +45,70 @@ class PptxLoader:
                 cell_text = "".join([run.text.strip() for para in cell for run in para.runs])
                 cell_text = re.sub("\n", "<br />", cell_text).strip()
                 arrays[j][i] = cell_text
-
-        for i, row in enumerate(table.rows):
-            for j, cell in enumerate(row.cells):
-                arrays[j][i] = cell.text
-
         return arrays
 
-    def _load_table(self, shapes) -> List[pd.DataFrame]:
-        tables = []
-        for shape in shapes:
-            if shape.has_table:
-                arrays = self._load_single_table(shape.table)
-                tables.append(pd.DataFrame({a[0]: a[1:] for a in arrays}))
-        return tables
-
-    def _extract_content(self, presentation):
-        """Extract title of slide,  text body and table elements from presentation
-
-        Args:
-            presentation (pptx.Presentation):
-
-        Returns:
-            list[str]: a list contains title of slide
-            list[str]: a list contains text body
-            list[str]: a list contains table content
-        """
-        all_title = []
-        all_text = []
-        tables = []
-        for slide_number, slide in enumerate(presentation.slides):
-            # -- extract slide title
+    def load(self, file_path: str) -> List[str]:
+        presentation = Presentation(file_path)
+        texts = []
+        
+        for slide in presentation.slides:
             title_text = ""
-            if (title_shape := slide.shapes.title) is not None:
-                title_text = title_shape.text.strip()
-            all_title.append(title_text)
-
-            try:
-                sorted_shapes = sorted(slide.shapes, key=lambda shape: (shape.top, shape.left))
-            except Exception:
-                sorted_shapes = slide.shapes
-
-            # -- extract text
-            slide_text = self._load_text(sorted_shapes, title_text)
-            slide_text = "\n".join(
-                [unicodedata.normalize("NFKC", text) for text in slide_text]
-            )
-            all_text.append(slide_text)
-
-            # -- extract table
-            slide_tables = self._load_table(sorted_shapes)
-            tables.append(slide_tables)
-
-        return all_title, all_text, tables
-
-    def load_data(self, file_path: str) -> List[str]:
-        """Load data using Pptx reader, considering only text and tables
-
-        Args:
-            file_path (str):
-
-        Returns:
-            List[Document]: list of documents extracted from file
-        """
-        file_path = Path(file_path).resolve()
-
-        doc = Presentation(str(file_path))
-        all_title, all_text, tables = self._extract_content(doc)
-
-        # create output Document with metadata from table
-        documents = [
-            table.to_csv(index=False).strip()
-            for slide_tables in tables
-            for table in slide_tables
-        ]
-
-        # create Document from non-table text
-        documents.extend(
-            [non_table_text.strip()
-             for non_table_text in all_text]
-        )
-
-        return documents
+            if slide.shapes.title:
+                title_text = slide.shapes.title.text.strip()
+                if title_text:
+                    texts.append(title_text)
+            
+            # Extract text from shapes
+            texts.extend(self._load_text(slide.shapes, title_text))
+            
+            # Extract text from tables
+            for shape in slide.shapes:
+                if shape.has_table:
+                    table_data = self._load_single_table(shape.table)
+                    texts.extend([cell for row in table_data for cell in row if cell.strip()])
+        
+        return texts
 
 
-class UnstructuredPptxReader:
-    """Load data using unstructured library
-    Ref: https://docs.unstructured.io/open-source/core-functionality/partitioning#partition-pptx
-    """
+class PptxUnstructuredStrategy(LoaderStrategy):
+    """Unstructured library loading strategy for PPTX"""
 
-    def load_data(self, file_path: str) -> List[str]:
-        elements = partition_pptx(filename=file_path)
-        all_text = "\n".join([ele.text.strip() for ele in elements])
-        return [all_text]
+    def load(self, file_path: str) -> List[str]:
+        elements = partition_pptx(file_path)
+        return ["\n".join([ele.text.strip() for ele in elements])]
 
 
-class LlamaIndexPptxReader:
-    """Load data using llama-index library
-    Ref: https://docs.llamaindex.ai/en/stable/module_guides/loading/simpledirectoryreader/
-    """
+class PptxLlamaIndexStrategy(LoaderStrategy):
+    """LlamaIndex loading strategy for PPTX"""
 
-    def load_data(self, file_path: str) -> List[str]:
+    def load(self, file_path: str) -> List[str]:
         reader = SimpleDirectoryReader(input_files=[file_path])
         document = reader.load_data()[0]
         return [document.text.strip()]
+
+
+class PptxLoader(DocumentLoader):
+    """PPTX document loader with multiple loading strategies"""
+
+    def __init__(self, strategy: LoaderStrategy = None):
+        strategy = strategy or PptxNativeStrategy()
+        super().__init__(strategy)
+
+    def load_data(self, file_path: str) -> List[str]:
+        if not self.validate_file(file_path):
+            raise ValueError(f"Invalid or non-existent file: {file_path}")
+        return self._strategy.load(file_path)
+
+    def supported_extensions(self) -> List[str]:
+        return ['.pptx']
+
+
+# Register valid strategies for PptxLoader
+PptxLoader.register_strategies([
+    PptxNativeStrategy,
+    PptxUnstructuredStrategy,
+    PptxLlamaIndexStrategy
+])
+
+# Register the loader with the factory
+LoaderFactory.register_loader(['.pptx'], PptxLoader)
